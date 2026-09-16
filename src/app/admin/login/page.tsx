@@ -1,0 +1,10 @@
+'use client';
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+export default function AdminLoginPage() {
+  const router = useRouter(); const [username, setUsername] = useState(""); const [password, setPassword] = useState(""); const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
+  async function submit(event: FormEvent) { event.preventDefault(); setError(""); setLoading(true); try { const response = await fetch("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) }); const contentType = response.headers.get("content-type") || ""; if (!contentType.includes("application/json")) throw new Error("The server returned an unexpected response. Please try again."); const data = await response.json(); if (!response.ok) throw new Error(data.error || "Could not sign in."); router.push("/admin/dashboard"); } catch (e) { setError(e instanceof Error ? e.message : "Could not sign in."); } finally { setLoading(false); } }
+  return <main className="admin-login-page"><div className="admin-login-card"><Link href="/" className="admin-back">← Back to student site</Link><div className="admin-login-logo"><span className="brand-mark">N</span><div><strong>NounStudyHub</strong><small>Admin console</small></div></div><div className="admin-kicker">SECURE ACCESS</div><h1>Welcome back, admin.</h1><p>Manage courses, question banks, and your study community.</p><form onSubmit={submit}><label>Admin username<input value={username} onChange={(e) => setUsername(e.target.value)} required autoComplete="username"/></label><label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password"/></label>{error && <div className="admin-error">{error}</div>}<button disabled={loading} type="submit">{loading ? "Signing in…" : "Sign in to dashboard"} <span>→</span></button></form><small className="admin-secure-note">Authentication is handled securely by the server.</small></div></main>;
+}
