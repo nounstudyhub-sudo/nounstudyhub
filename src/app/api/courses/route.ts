@@ -1,6 +1,7 @@
 import { asc, count, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
-import { courses, questions } from "@/db/schema";
+import { courses, favorites, questions } from "@/db/schema";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,5 +11,8 @@ export async function GET(request: Request) {
   const rows = await db.select({ course: courses, questionCount: count(questions.id) }).from(courses)
     .leftJoin(questions, eq(questions.courseId, courses.id)).where(filter)
     .groupBy(courses.id).orderBy(asc(courses.code));
-  return Response.json({ courses: rows.map((row) => ({ ...row.course, questionCount: Number(row.questionCount) })) });
+  const user = await getCurrentUser();
+  const saved = user ? await db.select({ courseId: favorites.courseId }).from(favorites).where(eq(favorites.userId, user.id)) : [];
+  const savedIds = new Set(saved.map((row) => row.courseId));
+  return Response.json({ courses: rows.map((row) => ({ ...row.course, questionCount: Number(row.questionCount), favorite: savedIds.has(row.course.id) })) });
 }
