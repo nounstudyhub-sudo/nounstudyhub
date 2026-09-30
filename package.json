@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@google/genai": "^2.24.0",
     "@tailwindcss/postcss": "^4.3.3",
     "dotenv": "17.3.1",
     "drizzle-orm": "0.45.2",
