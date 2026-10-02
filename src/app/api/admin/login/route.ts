@@ -7,11 +7,19 @@ function isBcryptHash(value: string) {
   return /^\$2[aby]\$/.test(value);
 }
 
+function configuredValue(value: string | undefined) {
+  const trimmed = value?.trim() ?? "";
+  if (trimmed.length >= 2 && ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) || (trimmed.startsWith("'") && trimmed.endsWith("'")))) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 export async function POST(request: Request) {
-  const configuredUsername = process.env.ADMIN_USERNAME?.trim();
-  const configuredPassword = process.env.ADMIN_PASSWORD?.trim();
+  const configuredUsername = configuredValue(process.env.ADMIN_USERNAME);
+  const configuredPassword = configuredValue(process.env.ADMIN_PASSWORD);
   if (!configuredUsername || !configuredPassword) {
-    console.error("[admin-login] ADMIN_USERNAME and ADMIN_PASSWORD must be configured.");
+    console.error("[admin-login] Admin environment variables not configured.");
     return Response.json({ error: "Sign-in failed. Please try again." }, { status: 500 });
   }
 
@@ -23,14 +31,14 @@ export async function POST(request: Request) {
   }
 
   const username = String(body.username ?? "").trim().toLowerCase();
-  const password = String(body.password ?? "");
+  const password = String(body.password ?? "").trim();
   const expectedUsername = configuredUsername.toLowerCase();
   const passwordMatches = isBcryptHash(configuredPassword)
     ? await bcrypt.compare(password, configuredPassword).catch(() => false)
     : password === configuredPassword;
 
   if (!username || username !== expectedUsername || !passwordMatches) {
-    console.error("[admin-login] Admin credentials did not match the configured credentials.");
+    console.error(`[admin-login] Credentials did not match (usernameMatch=${Boolean(username && username === expectedUsername)}, passwordMatch=${passwordMatches}).`);
     return Response.json({ error: "Invalid admin credentials." }, { status: 401 });
   }
 

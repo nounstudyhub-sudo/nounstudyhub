@@ -34,7 +34,10 @@ async function requestJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) } });
   const contentType = response.headers.get("content-type") || "";
   const data = contentType.includes("application/json") ? await response.json().catch(() => ({})) : {};
-  if (!response.ok) throw new Error((data as { error?: string }).error || "Something went wrong.");
+  if (!response.ok) {
+    const payload = data as { error?: string; message?: string };
+    throw new Error(payload.error || payload.message || "Something went wrong.");
+  }
   return data as T;
 }
 
