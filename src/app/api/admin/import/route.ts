@@ -1,6 +1,5 @@
-import { and, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { adminImports, questionBanks, questions } from "@/db/schema";
+import { connectToDatabase } from "@/db";
+import { AdminImport, Question, QuestionBank, objectIdOrNull } from "@/db/models";
 import { requireAdmin, safeText } from "@/lib/auth";
 
 type CsvRow = { question: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; explanation: string };
@@ -14,8 +13,9 @@ function parseCsv(input: string): string[][] {
 export async function POST(request: Request) {
   try {
     await requireAdmin();
+    await connectToDatabase();
     const body = await request.json().catch(() => ({}));
-    const courseId = safeText(body.courseId, 50); const year = Number(body.year); const csv = String(body.csv ?? "");
+    const courseId = objectIdOrNull(safeText(body.courseId, 50)); const year = Number(body.year); const csv = String(body.csv ?? "");
     const rows = parseCsv(csv);
     const header = rows.shift()?.map((item) => item.trim().toLowerCase());
     const required = ["question", "optiona", "optionb", "optionc", "optiond", "correctanswer"];
@@ -31,10 +31,9 @@ export async function POST(request: Request) {
     });
     if (!courseId || !Number.isInteger(year)) return Response.json({ error: "Select a course and valid question-bank year." }, { status: 400 });
     if (!valid.length) return Response.json({ error: "No valid questions detected.", detected: rows.length, errors }, { status: 400 });
-    let [bank] = await db.select().from(questionBanks).where(and(eq(questionBanks.courseId, courseId), eq(questionBanks.year, year))).limit(1);
-    if (!bank) [bank] = await db.insert(questionBanks).values({ courseId, year }).returning();
-    const inserted = await db.insert(questions).values(valid.map((item) => ({ courseId, bankId: bank.id, question: item.question, optionA: item.optionA, optionB: item.optionB, optionC: item.optionC, optionD: item.optionD, correctAnswer: item.correctAnswer, explanation: item.explanation || null }))).returning({ id: questions.id });
-    await db.insert(adminImports).values({ courseId, bankId: bank.id, questionCount: inserted.length });
-    return Response.json({ imported: inserted.length, invalid: errors.length, errors, bankId: bank.id }, { status: 201 });
+    const bank = await QuestionBank.findOneAndUpdate({ courseId, year }, { $setOnInsert: { courseId, year } }, { upsert: true, new: true, setDefaultsOnInsert: true });
+    const inserted = await Question.insertMany(valid.map((item) => ({ courseId, bankId: bank._id, question: item.question, optionA: item.optionA, optionB: item.optionB, optionC: item.optionC, optionD: item.optionD, correctAnswer: item.correctAnswer, explanation: item.explanation || null })));
+    await AdminImport.create({ courseId, bankId: bank._id, questionCount: inserted.length });
+    return Response.json({ imported: inserted.length, invalid: errors.length, errors, bankId: bank._id.toString() }, { status: 201 });
   } catch { return Response.json({ error: "Question import failed." }, { status: 500 }); }
 }

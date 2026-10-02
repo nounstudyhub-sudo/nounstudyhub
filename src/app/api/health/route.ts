@@ -1,12 +1,12 @@
-import { db } from "@/db";
-import { sql } from "drizzle-orm";
+import mongoose from "mongoose";
+import { connectToDatabase } from "@/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    await db.execute(sql`select 1`);
-    return Response.json({ ok: true, service: "NounStudyHub" });
+    await connectToDatabase();
+    return Response.json({ ok: true, service: "NounStudyHub", database: mongoose.connection.name });
   } catch {
     return Response.json({ ok: false, service: "NounStudyHub" }, { status: 500 });
   }

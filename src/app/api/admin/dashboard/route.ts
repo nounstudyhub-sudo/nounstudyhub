@@ -1,21 +1,31 @@
-import { count, desc, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { adminImports, courses, courseRequests, mockAttempts, questionBanks, questions, users } from "@/db/schema";
+import { connectToDatabase } from "@/db";
+import { AdminImport, Course, CourseRequest, MockAttempt, Question, User, idString, withId } from "@/db/models";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET() {
   try {
     await requireAdmin();
-    const [[userCount], [courseCount], [questionCount], [attemptCount], [pendingCount]] = await Promise.all([
-      db.select({ value: count() }).from(users).where(eq(users.role, "student")),
-      db.select({ value: count() }).from(courses),
-      db.select({ value: count() }).from(questions),
-      db.select({ value: count() }).from(mockAttempts),
-      db.select({ value: count() }).from(courseRequests).where(eq(courseRequests.status, "Pending")),
+    await connectToDatabase();
+    const [userCount, courseCount, questionCount, attemptCount, pendingCount, recentUserRows, importRows, requestRows] = await Promise.all([
+      User.countDocuments({ role: "student" }),
+      Course.countDocuments(),
+      Question.countDocuments(),
+      MockAttempt.countDocuments(),
+      CourseRequest.countDocuments({ status: "Pending" }),
+      User.find({ role: "student" }).sort({ createdAt: -1 }).limit(5).lean(),
+      AdminImport.find().sort({ createdAt: -1 }).limit(5).populate("courseId").populate("bankId").lean(),
+      CourseRequest.find().sort({ createdAt: -1 }).limit(20).populate("userId", "username").lean(),
     ]);
-    const recentUsers = await db.select().from(users).where(eq(users.role, "student")).orderBy(desc(users.createdAt)).limit(5);
-    const imports = await db.select({ import: adminImports, course: courses, bank: questionBanks }).from(adminImports).innerJoin(courses, eq(adminImports.courseId, courses.id)).innerJoin(questionBanks, eq(adminImports.bankId, questionBanks.id)).orderBy(desc(adminImports.createdAt)).limit(5);
-    const requests = await db.select({ request: courseRequests, user: users }).from(courseRequests).innerJoin(users, eq(courseRequests.userId, users.id)).orderBy(desc(courseRequests.createdAt)).limit(20);
-    return Response.json({ stats: { users: Number(userCount.value), courses: Number(courseCount.value), questions: Number(questionCount.value), attempts: Number(attemptCount.value), pending: Number(pendingCount.value) }, recentUsers, imports, requests });
+    const recentUsers = recentUserRows.map(withId);
+    const imports = importRows.map((row) => {
+      const course = row.courseId as unknown as { _id: unknown };
+      const bank = row.bankId as unknown as { _id: unknown };
+      return { import: { ...withId(row), courseId: idString(course._id), bankId: idString(bank._id) }, course: withId(course), bank: withId(bank) };
+    });
+    const requests = requestRows.map((row) => {
+      const user = row.userId as unknown as { _id: unknown };
+      return { request: { ...withId(row), userId: idString(user._id) }, user: withId(user) };
+    });
+    return Response.json({ stats: { users: userCount, courses: courseCount, questions: questionCount, attempts: attemptCount, pending: pendingCount }, recentUsers, imports, requests });
   } catch (error) { return Response.json({ error: error instanceof Error && error.message === "FORBIDDEN" ? "Admin access required." : "Please log in." }, { status: 401 }); }
 }

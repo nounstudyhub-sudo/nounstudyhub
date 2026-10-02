@@ -1,31 +1,33 @@
 {
-  "name": "nextjs-postgresql-template",
+  "name": "nounstudyhub",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:create": "node scripts/ensure-indexes.mjs",
+    "db:seed": "node scripts/seed-mongodb.mjs",
+    "db:setup": "npm run db:create && npm run db:seed"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",
     "@tailwindcss/postcss": "^4.3.3",
+    "bcryptjs": "^2.4.3",
     "dotenv": "17.3.1",
-    "drizzle-orm": "0.45.2",
+    "mongoose": "^9.10.3",
     "next": "16.2.6",
-    "pg": "8.20.0",
     "postcss": "^8.5.28",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "22.19.15",
-    "@types/pg": "8.18.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "typescript": "5.9.3"

@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
-import { and, eq, gt } from "drizzle-orm";
-import { db } from "@/db";
-import { sessions, users } from "@/db/schema";
+import { connectToDatabase } from "@/db";
+import { Session, User, idString, type UserRecord } from "@/db/models";
 
 const SESSION_COOKIE = "nounstudyhub_session";
 const SESSION_DAYS = 30;
@@ -31,9 +30,9 @@ export function verifyPassword(password: string, stored: string) {
   return storedKey.length === derived.length && timingSafeEqual(storedKey, derived);
 }
 
-export function publicUser(user: typeof users.$inferSelect): PublicUser {
+export function publicUser(user: UserRecord): PublicUser {
   return {
-    id: user.id,
+    id: idString(user._id),
     username: user.username,
     matriculationNumber: user.matriculationNumber,
     phoneNumber: user.phoneNumber,
@@ -44,9 +43,10 @@ export function publicUser(user: typeof users.$inferSelect): PublicUser {
 }
 
 export async function createSession(userId: string) {
+  await connectToDatabase();
   const token = randomUUID() + randomBytes(18).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-  await db.insert(sessions).values({ token, userId, expiresAt });
+  await Session.create({ token, userId, expiresAt });
   const cookieStore = await cookies();
   // `secure` is intentionally omitted so the session survives sandboxed previews
   // that terminate TLS at a proxy and forward plain HTTP to the app.
@@ -59,23 +59,23 @@ export async function createSession(userId: string) {
 }
 
 export async function clearSession() {
+  await connectToDatabase();
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-  if (token) await db.delete(sessions).where(eq(sessions.token, token));
+  if (token) await Session.deleteOne({ token });
   cookieStore.delete(SESSION_COOKIE);
 }
 
 export async function getCurrentUser() {
+  await connectToDatabase();
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  const rows = await db.select({ user: users }).from(sessions)
-    .innerJoin(users, eq(sessions.userId, users.id))
-    .where(and(eq(sessions.token, token), gt(sessions.expiresAt, new Date())))
-    .limit(1);
-  const row = rows[0];
-  if (!row || !row.user.isActive) return null;
-  return row.user;
+  const session = await Session.findOne({ token, expiresAt: { $gt: new Date() } }).lean();
+  if (!session) return null;
+  const user = await User.findById(session.userId).lean();
+  if (!user || !user.isActive) return null;
+  return { ...user, id: idString(user._id) };
 }
 
 export async function requireUser() {

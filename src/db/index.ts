@@ -1,24 +1,35 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import mongoose from "mongoose";
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required");
-}
-
-const globalForDb = globalThis as typeof globalThis & {
-  __arenaNextJsPostgresqlPool?: Pool;
+type MongooseCache = {
+  connection: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
 };
 
-export const pool =
-  globalForDb.__arenaNextJsPostgresqlPool ??
-  new Pool({
-    connectionString: databaseUrl,
-  });
+const globalForMongoose = globalThis as typeof globalThis & {
+  __nounStudyHubMongoose?: MongooseCache;
+};
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__arenaNextJsPostgresqlPool = pool;
+const cache = globalForMongoose.__nounStudyHubMongoose ?? {
+  connection: null,
+  promise: null,
+};
+
+globalForMongoose.__nounStudyHubMongoose = cache;
+
+export async function connectToDatabase() {
+  if (cache.connection && mongoose.connection.readyState === 1) return cache.connection;
+
+  const uri = process.env.MONGODB_URI;
+  if (!uri) throw new Error("MONGODB_URI is not configured.");
+
+  if (!cache.promise) cache.promise = mongoose.connect(uri);
+
+  try {
+    cache.connection = await cache.promise;
+  } catch (error) {
+    cache.promise = null;
+    throw error;
+  }
+
+  return cache.connection;
 }
-
-export const db = drizzle(pool);
