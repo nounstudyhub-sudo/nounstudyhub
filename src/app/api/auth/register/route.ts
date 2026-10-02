@@ -31,7 +31,10 @@ export async function POST(request: Request) {
         return Response.json({ error: "Matriculation number already registered." }, { status: 409 });
       }
     }
-    console.error(`[auth-register] Failed to create user: ${error instanceof Error ? error.message : "unknown"}`);
-    return Response.json({ error: "Could not create your account." }, { status: 500 });
+    const databaseUnavailable = error instanceof Error && (
+      error.message.includes("MONGODB_URI") || error.name === "MongooseServerSelectionError"
+    );
+    console.error(`[auth-register] Account creation failed (${error instanceof Error ? error.name : "unknown error"}; database unavailable: ${databaseUnavailable}).`);
+    return Response.json({ error: "Could not create your account. Please try again." }, { status: databaseUnavailable ? 503 : 500 });
   }
 }

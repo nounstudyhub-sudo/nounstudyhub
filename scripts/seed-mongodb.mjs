@@ -4,6 +4,7 @@ import { randomBytes, scryptSync } from "node:crypto";
 
 const uri = process.env.MONGODB_URI;
 if (!uri) throw new Error("MONGODB_URI is required to seed the database.");
+const databaseName = process.env.MONGODB_DB?.trim() || new URL(uri).pathname.replace(/^\/+/, "") || "test";
 
 const Course = mongoose.models.Course || mongoose.model("Course", new Schema({ code: String, title: String, description: String, createdAt: Date }, { versionKey: false }), "courses");
 const QuestionBank = mongoose.models.QuestionBank || mongoose.model("QuestionBank", new Schema({ courseId: Schema.Types.ObjectId, year: Number, createdAt: Date }, { versionKey: false }), "questionBanks");
@@ -40,7 +41,7 @@ function hashPassword(password) {
 }
 
 async function main() {
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, { dbName: databaseName });
   const courseIds = new Map();
 
   for (const item of courses) {

@@ -20,8 +20,9 @@ export default function CoursesPage() {
   useEffect(() => {
     fetch("/api/courses")
       .then(async (response) => {
-        if (!response.ok) throw new Error("Courses could not be loaded.");
-        return response.json() as Promise<{ courses: Course[] }>;
+        const data = await response.json().catch(() => ({})) as { courses?: Course[]; error?: string };
+        if (!response.ok) throw new Error(data.error || "Courses could not be loaded.");
+        return data;
       })
       .then((data) => setCourses(Array.isArray(data.courses) ? data.courses : []))
       .catch((loadError: unknown) => setError(loadError instanceof Error ? loadError.message : "Courses could not be loaded."))

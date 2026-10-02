@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 
 const uri = process.env.MONGODB_URI;
 if (!uri) throw new Error("MONGODB_URI is required to create indexes.");
+const databaseName = process.env.MONGODB_DB?.trim() || new URL(uri).pathname.replace(/^\/+/, "") || "test";
 
 const indexes = {
   users: [
@@ -33,7 +34,7 @@ const indexes = {
 };
 
 try {
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, { dbName: databaseName });
   for (const [collectionName, collectionIndexes] of Object.entries(indexes)) {
     const collection = mongoose.connection.collection(collectionName);
     for (const [keys, options] of collectionIndexes) {

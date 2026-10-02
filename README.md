@@ -6,13 +6,13 @@ NounStudyHub — course summaries, mock CBT practice and progress tracking for N
 
 ```bash
 npm install
-# 1. Configure your database, then create tables and seed sample data:
+# 1. Configure MongoDB, then create indexes and seed sample data:
 npm run db:setup
 # 2. Run the dev server:
 npm run dev
 ```
 
-Set `MONGODB_URI` in a `.env` file (see `.env.example`). For local development, use `mongodb://127.0.0.1:27017/nounstudyhub`; MongoDB Atlas connection strings use the `mongodb+srv://` format.
+Set `MONGODB_URI` in a `.env` file (see `.env.example`). For local development, use `mongodb://127.0.0.1:27017/nounstudyhub`; MongoDB Atlas connection strings use the `mongodb+srv://` format. If your URI has no database path, MongoDB's default database is `test`; set `MONGODB_DB` to select a different database explicitly.
 
 Switching from PostgreSQL does not copy existing records. Export/import any data you need before changing database providers; `npm run db:seed` only inserts the documented demo dataset.
 
@@ -21,12 +21,13 @@ Switching from PostgreSQL does not copy existing records. Export/import any data
 | Variable            | Required | Purpose                                                              |
 | ------------------- | -------- | -------------------------------------------------------------------- |
 | `MONGODB_URI`       | Yes      | MongoDB connection string                                             |
-| `ADMIN_USERNAME`    | Yes*     | Admin console username (defaults to `Khalifa` for local dev)         |
-| `ADMIN_PASSWORD`    | Yes*     | Admin console password — plain text or bcrypt hash (defaults locally)|
+| `MONGODB_DB`        | No       | Database override when the URI omits `/database` (default `test`)    |
+| `ADMIN_USERNAME`    | Yes      | Admin console username                                                |
+| `ADMIN_PASSWORD`    | Yes      | Admin console password — plain text or bcrypt hash                    |
 | `GEMINI_API_KEY`    | No       | Server-only Google Gemini key for AI routes                          |
 | `AI_DAILY_LIMIT`    | No       | Authenticated user's shared daily AI request limit (default 100)    |
 
-*Set both in production (e.g. Render). If unset, the app falls back to local defaults and logs a warning.
+Set admin credentials in a private `.env` file locally and in Render's environment settings. The login route intentionally has no hard-coded fallback credentials.
 
 ## Deploying to Render
 
@@ -36,9 +37,10 @@ Switching from PostgreSQL does not copy existing records. Export/import any data
    - **Start command:** `npm start`
 3. Add environment variables in **Render → Your service → Environment**:
    - `MONGODB_URI` (the MongoDB connection string)
+   - `MONGODB_DB` (the database containing NounStudyHub collections; required when the URI has no database path)
    - `ADMIN_USERNAME`, `ADMIN_PASSWORD`
    - `GEMINI_API_KEY`, `AI_DAILY_LIMIT` (optional)
-4. Mongoose creates collections and indexes as models are used. No table migration step is required.
+4. Run `npm run db:create` with the Render MongoDB environment values to create the required indexes. Mongoose creates collections when records are first written; no table migration step is required.
 5. (Optional) To load demo courses and questions, run `npm run db:setup` with `MONGODB_URI` set for the target cluster.
 
 ## Database setup commands
@@ -61,4 +63,4 @@ The authenticated, server-only AI routes are `/api/ai/explain`, `/api/ai/chat`, 
 
 ## Admin console
 
-The admin console lives at `/admin/login`. Use the credentials configured via `ADMIN_USERNAME` / `ADMIN_PASSWORD` (local defaults: `Khalifa` / `Khalifa1`).
+The admin console lives at `/admin/login`. Use credentials configured via `ADMIN_USERNAME` / `ADMIN_PASSWORD`.

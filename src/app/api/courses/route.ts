@@ -26,8 +26,12 @@ export async function GET(request: Request) {
     }));
     return Response.json({ courses });
   } catch (error) {
-    console.error(`[courses] Failed to list courses: ${error instanceof Error ? error.message : "unknown"}`);
-    return Response.json({ courses: [] }, { status: 500 });
+    const missingUri = error instanceof Error && error.message.includes("MONGODB_URI");
+    console.error(`[courses] MongoDB query failed (${error instanceof Error ? error.name : "unknown error"}).`);
+    return Response.json({
+      courses: [],
+      error: "Courses could not be loaded. Please try again.",
+    }, { status: 503 });
   }
 }
 

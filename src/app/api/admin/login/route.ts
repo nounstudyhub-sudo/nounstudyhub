@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const configuredPassword = process.env.ADMIN_PASSWORD?.trim();
   if (!configuredUsername || !configuredPassword) {
     console.error("[admin-login] ADMIN_USERNAME and ADMIN_PASSWORD must be configured.");
-    return Response.json({ error: "Admin sign-in is not configured." }, { status: 500 });
+    return Response.json({ error: "Sign-in failed. Please try again." }, { status: 500 });
   }
 
   let body: Record<string, unknown>;
@@ -55,7 +55,10 @@ export async function POST(request: Request) {
     await createSession(user._id.toString());
     return Response.json({ user: publicUser(user) });
   } catch (error) {
-    console.error(`[admin-login] Sign-in could not complete: ${error instanceof Error ? error.message : "unknown error"}`);
-    return Response.json({ error: "Sign-in failed. Please try again." }, { status: 500 });
+    const databaseUnavailable = error instanceof Error && (
+      error.message.includes("MONGODB_URI") || error.name === "MongooseServerSelectionError"
+    );
+    console.error(`[admin-login] Sign-in failed (${error instanceof Error ? error.name : "unknown error"}; database unavailable: ${databaseUnavailable}).`);
+    return Response.json({ error: "Sign-in failed. Please try again." }, { status: databaseUnavailable ? 503 : 500 });
   }
 }
