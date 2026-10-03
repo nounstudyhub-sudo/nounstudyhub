@@ -24,6 +24,7 @@ const indexes = {
   mockAnswers: [[{ attemptId: 1, position: 1 }, { unique: true, name: "answers_attempt_position_unique" }]],
   favorites: [[{ userId: 1, courseId: 1 }, { unique: true, name: "favorites_user_course_unique" }]],
   courseViews: [[{ userId: 1, courseId: 1 }, { unique: true, name: "views_user_course_unique" }]],
+  studyProgress: [[{ userId: 1, courseId: 1 }, { unique: true, name: "study_progress_user_course_unique" }]],
   courseRequests: [[{ userId: 1, createdAt: -1 }, { name: "requests_user_created" }]],
   notifications: [[{ userId: 1, createdAt: -1 }, { name: "notifications_user_created" }]],
   adminImports: [[{ courseId: 1, bankId: 1 }, { name: "imports_course_bank" }]],

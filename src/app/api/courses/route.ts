@@ -1,5 +1,5 @@
 import { connectToDatabase } from "@/db";
-import { Course, Favorite, Question, idString, withId } from "@/db/models";
+import { Course, Favorite, Module, Question, idString, withId } from "@/db/models";
 import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -17,11 +17,16 @@ export async function GET(request: Request) {
     const user = await getCurrentUser();
     const saved = user ? await Favorite.find({ userId: user.id }).select("courseId").lean() : [];
     const savedIds = new Set(saved.map((row) => idString(row.courseId)));
-    const questionCounts = await Question.aggregate([{ $group: { _id: "$courseId", count: { $sum: 1 } } }]);
+    const [questionCounts, moduleCounts] = await Promise.all([
+      Question.aggregate([{ $group: { _id: "$courseId", count: { $sum: 1 } } }]),
+      Module.aggregate([{ $group: { _id: "$courseId", count: { $sum: 1 } } }]),
+    ]);
     const countsByCourse = new Map(questionCounts.map((row) => [idString(row._id), row.count]));
+    const modulesByCourse = new Map(moduleCounts.map((row) => [idString(row._id), row.count]));
     const courses = rows.map((course) => ({
       ...withId(course),
       questionCount: countsByCourse.get(idString(course._id)) ?? 0,
+      moduleCount: modulesByCourse.get(idString(course._id)) ?? 0,
       favorite: savedIds.has(idString(course._id)),
     }));
     return Response.json({ courses });

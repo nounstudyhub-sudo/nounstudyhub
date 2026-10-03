@@ -27,7 +27,7 @@ export function AiExplainButton({ attemptId, questionId }: { attemptId: string; 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [explanation, setExplanation] = useState("");
-  const [authoritativeAnswer, setAuthoritativeAnswer] = useState<{ letter: string; text: string } | null>(null);
+  const [authoritativeAnswer, setAuthoritativeAnswer] = useState<{ letter: string; text: string; questionType: "MCQ" | "FBQ" } | null>(null);
   const [studentAnswer, setStudentAnswer] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -38,7 +38,7 @@ export function AiExplainButton({ attemptId, questionId }: { attemptId: string; 
     setLoading(true);
     setError("");
     try {
-      const data = await requestAi<{ explanation: string; authoritativeAnswer: { letter: string; text: string }; studentAnswer: string | null; usage: Usage }>("/api/ai/explain", { attemptId, questionId });
+      const data = await requestAi<{ explanation: string; authoritativeAnswer: { letter: string; text: string; questionType: "MCQ" | "FBQ" }; studentAnswer: string | null; usage: Usage }>("/api/ai/explain", { attemptId, questionId });
       setExplanation(data.explanation);
       setAuthoritativeAnswer(data.authoritativeAnswer);
       setStudentAnswer(data.studentAnswer);
@@ -55,7 +55,7 @@ export function AiExplainButton({ attemptId, questionId }: { attemptId: string; 
       ✦ {explanation ? "AI explanation" : "Explain with AI"}
     </button>
     {open && <div className="ai-inline-panel" role="status">
-      {loading ? <p>Preparing an explanation from your saved answer…</p> : error ? <p className="ai-error">{error}</p> : <><div className="ai-answer-source"><strong>Official answer: {authoritativeAnswer?.letter}. {authoritativeAnswer?.text}</strong><span>Your answer: {studentAnswer ?? "Unanswered"}</span></div><p>{explanation}</p>{usage && <small>{usage.remaining} AI requests remaining today</small>}</>}
+      {loading ? <p>Preparing an explanation from your saved answer…</p> : error ? <p className="ai-error">{error}</p> : <><div className="ai-answer-source"><strong>Official answer: {authoritativeAnswer?.questionType === "MCQ" ? `${authoritativeAnswer.letter}. ` : ""}{authoritativeAnswer?.text}</strong><span>Your answer: {studentAnswer ?? "Unanswered"}</span></div><p>{explanation}</p>{usage && <small>{usage.remaining} AI requests remaining today</small>}</>}
     </div>}
   </div>;
 }
@@ -63,8 +63,8 @@ export function AiExplainButton({ attemptId, questionId }: { attemptId: string; 
 type SavedReview = {
   attempt: { id: string };
   answers: {
-    answer: { id: string; questionId: string; selectedAnswer: string | null; correctAnswer: string };
-    question: { id: string; question: string; optionA: string; optionB: string; optionC: string; optionD: string; explanation?: string | null };
+    answer: { id: string; questionId: string; selectedAnswer: string | null; correctAnswer: string; questionType?: "MCQ" | "FBQ" };
+    question: { id: string; question: string; questionType?: "MCQ" | "FBQ"; optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null; explanation?: string | null };
   }[];
 };
 
@@ -93,14 +93,18 @@ export function MockQuestionReview({ attemptId }: { attemptId: string }) {
   if (!data) return <p className="ai-loading" role="status">Loading saved questions…</p>;
 
   return <div className="review-list">{data.answers.map(({ answer, question }, index) => {
+    const questionType = answer.questionType ?? question.questionType ?? "MCQ";
+    const isCorrect = questionType === "FBQ"
+      ? Boolean(answer.selectedAnswer?.trim()) && answer.selectedAnswer?.trim().toLowerCase() === answer.correctAnswer.trim().toLowerCase()
+      : answer.selectedAnswer === answer.correctAnswer;
     const options = { A: question.optionA, B: question.optionB, C: question.optionC, D: question.optionD };
-    const selectedText = answer.selectedAnswer ? options[answer.selectedAnswer as keyof typeof options] : "Unanswered";
-    const correctText = options[answer.correctAnswer as keyof typeof options];
-    return <article className={`review-card ${answer.selectedAnswer === answer.correctAnswer ? "is-correct" : "is-wrong"}`} key={answer.id}>
-      <div className="review-card-top"><span>QUESTION {String(index + 1).padStart(2, "0")}</span><strong>{answer.selectedAnswer === answer.correctAnswer ? "Correct" : "Review this"}</strong></div>
+    const selectedText = questionType === "FBQ" ? answer.selectedAnswer : answer.selectedAnswer ? options[answer.selectedAnswer as keyof typeof options] : null;
+    const correctText = questionType === "FBQ" ? answer.correctAnswer : options[answer.correctAnswer as keyof typeof options];
+    return <article className={`review-card ${isCorrect ? "is-correct" : "is-wrong"}`} key={answer.id}>
+      <div className="review-card-top"><span>QUESTION {String(index + 1).padStart(2, "0")} · {questionType}</span><strong>{isCorrect ? "Correct" : "Review this"}</strong></div>
       <h2>{question.question}</h2>
-      <div className="ai-question-options">{Object.entries(options).map(([letter, text]) => <p key={letter}><strong>{letter}.</strong> {text}</p>)}</div>
-      <div className="review-answers"><div><small>Your answer</small><strong className={answer.selectedAnswer === answer.correctAnswer ? "answer-good" : "answer-bad"}>{answer.selectedAnswer ? `${answer.selectedAnswer}. ${selectedText}` : "Unanswered"}</strong></div><div><small>Correct answer · database</small><strong className="answer-good">{answer.correctAnswer}. {correctText}</strong></div></div>
+      {questionType === "MCQ" && <div className="ai-question-options">{Object.entries(options).map(([letter, text]) => <p key={letter}><strong>{letter}.</strong> {text}</p>)}</div>}
+      <div className="review-answers"><div><small>Your answer</small><strong className={isCorrect ? "answer-good" : "answer-bad"}>{questionType === "MCQ" && answer.selectedAnswer ? `${answer.selectedAnswer}. ` : ""}{selectedText ?? "Unanswered"}</strong></div><div><small>Correct answer · database</small><strong className="answer-good">{questionType === "MCQ" ? `${answer.correctAnswer}. ` : ""}{correctText}</strong></div></div>
       {question.explanation && <div className="review-explanation"><span className="icon">✎</span><div><small>Stored explanation</small><p>{question.explanation}</p></div></div>}
       <AiExplainButton attemptId={attemptId} questionId={answer.questionId}/>
     </article>;

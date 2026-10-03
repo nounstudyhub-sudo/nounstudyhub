@@ -1,5 +1,5 @@
 import { connectToDatabase } from "@/db";
-import { CourseRequest, Notification, withId } from "@/db/models";
+import { Course, CourseRequest, Notification, withId } from "@/db/models";
 import { requireUser, safeText } from "@/lib/auth";
 
 export async function GET() {
@@ -11,10 +11,15 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     await connectToDatabase();
-    const requestText = safeText((await request.json()).requestText, 120);
-    if (!requestText) return Response.json({ error: "Enter a course name or code." }, { status: 400 });
-    const created = await CourseRequest.create({ userId: user.id, requestText });
-    await Notification.create({ type: "admin_request", message: `${user.username} requested ${requestText}`, link: "/admin/dashboard?section=requests" });
+    const body = await request.json();
+    const courseCode = safeText(body.courseCode, 20).toUpperCase();
+    const courseTitle = safeText(body.courseTitle, 160);
+    if (!/^[A-Z0-9-]{2,20}$/.test(courseCode) || !courseTitle) return Response.json({ error: "Enter a valid course code and course title." }, { status: 400 });
+    const existingCourse = await Course.findOne({ $or: [{ code: courseCode }, { title: courseTitle }] }).collation({ locale: "en", strength: 2 }).select("_id").lean();
+    if (existingCourse) return Response.json({ error: "This course is already on the database" }, { status: 409 });
+    const requestText = `${courseCode} ${courseTitle}`.slice(0, 120);
+    const created = await CourseRequest.create({ userId: user.id, requestText, courseCode, courseTitle });
+    await Notification.create({ userId: null, type: "admin", message: `${user.username} requested ${courseCode} ${courseTitle}`, link: "/admin/requested-courses" }).catch(() => undefined);
     return Response.json({ request: withId(created.toObject()) }, { status: 201 });
   } catch { return Response.json({ error: "Could not submit your request." }, { status: 500 }); }
 }

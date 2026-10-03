@@ -11,7 +11,7 @@ export async function GET(request: Request) {
       { code: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } },
       { title: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } },
     ] }).distinct("_id") : undefined;
-    const attempts = await MockAttempt.find({ userId: user.id, ...(courseFilter ? { courseId: { $in: courseFilter } } : {}) }).sort({ startedAt: -1 }).populate("courseId").lean();
+    const attempts = await MockAttempt.find({ userId: user.id, submittedAt: { $ne: null }, ...(courseFilter ? { courseId: { $in: courseFilter } } : {}) }).sort({ startedAt: -1 }).populate("courseId").lean();
     const rows = attempts.map((attempt) => {
       const course = attempt.courseId as unknown as { _id: unknown };
       return { attempt: { ...withId(attempt), courseId: idString(course._id) }, course: withId(course) };

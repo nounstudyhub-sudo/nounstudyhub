@@ -8,7 +8,7 @@ const databaseName = process.env.MONGODB_DB?.trim() || new URL(uri).pathname.rep
 
 const Course = mongoose.models.Course || mongoose.model("Course", new Schema({ code: String, title: String, description: String, createdAt: Date }, { versionKey: false }), "courses");
 const QuestionBank = mongoose.models.QuestionBank || mongoose.model("QuestionBank", new Schema({ courseId: Schema.Types.ObjectId, year: Number, createdAt: Date }, { versionKey: false }), "questionBanks");
-const Question = mongoose.models.Question || mongoose.model("Question", new Schema({ courseId: Schema.Types.ObjectId, bankId: Schema.Types.ObjectId, question: String, optionA: String, optionB: String, optionC: String, optionD: String, correctAnswer: String, explanation: String, createdAt: Date }, { versionKey: false }), "questions");
+const Question = mongoose.models.Question || mongoose.model("Question", new Schema({ courseId: Schema.Types.ObjectId, bankId: Schema.Types.ObjectId, question: String, questionType: { type: String, enum: ["MCQ", "FBQ"], default: "MCQ" }, optionA: { type: String, default: null }, optionB: { type: String, default: null }, optionC: { type: String, default: null }, optionD: { type: String, default: null }, correctAnswer: String, explanation: String, createdAt: Date }, { versionKey: false }), "questions");
 const User = mongoose.models.User || mongoose.model("User", new Schema({ username: String, passwordHash: String, matriculationNumber: String, role: String, isActive: Boolean, createdAt: Date }, { versionKey: false }), "users");
 const MockAttempt = mongoose.models.MockAttempt || mongoose.model("MockAttempt", new Schema({ userId: Schema.Types.ObjectId, courseId: Schema.Types.ObjectId, totalQuestions: Number, correctAnswers: Number, unanswered: Number, percentage: Number, timeLimit: Number, timeUsed: Number, startedAt: Date, submittedAt: Date }, { versionKey: false }), "mockAttempts");
 
@@ -66,6 +66,7 @@ async function main() {
           courseId: course._id,
           bankId: bank._id,
           question: `Which of the following best describes a core principle of ${item.topic}? (${item.code} Q${position})`,
+          questionType: "MCQ",
           optionA: "A principle unrelated to the subject",
           optionB: "A widely accepted principle within the subject",
           optionC: "A principle that only applies to agriculture",
@@ -81,7 +82,7 @@ async function main() {
   for (const student of students) {
     const user = await User.findOneAndUpdate(
       { username: student.username },
-      { $set: { passwordHash: hashPassword("student123") }, $setOnInsert: { username: student.username, matriculationNumber: student.matric.toUpperCase(), role: "student", isActive: true } },
+      { $set: { passwordHash: hashPassword(randomBytes(32).toString("hex")) }, $setOnInsert: { username: student.username, matriculationNumber: student.matric.toUpperCase(), role: "student", isActive: true } },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
     if (await MockAttempt.exists({ userId: user._id })) continue;

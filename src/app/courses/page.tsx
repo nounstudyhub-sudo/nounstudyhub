@@ -14,6 +14,7 @@ type Course = {
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [search, setSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -46,17 +47,26 @@ export default function CoursesPage() {
           <h1>Find your next course.</h1>
           <p>Search by course code or title to check which courses are available on NounStudyHub.</p>
         </header>
-        <div className="library-toolbar courses-search">
-          <label className="search-field">
-            <span className="icon" aria-hidden="true">⌕</span>
-            <input
-              aria-label="Search by course code or title"
-              placeholder="Search by course code or title..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
-          <span className="courses-count" aria-live="polite">{filteredCourses.length} courses</span>
+        <div className="public-course-search-wrap">
+          <div className="library-toolbar courses-search">
+            <label className="search-field">
+              <span className="icon" aria-hidden="true">⌕</span>
+              <input
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="public-course-suggestions"
+                aria-expanded={searchFocused && Boolean(normalizedSearch)}
+                aria-label="Search by course code or title"
+                placeholder="Search by course code or title..."
+                value={search}
+                onFocus={() => setSearchFocused(true)}
+                onChange={(event) => { setSearch(event.target.value); setSearchFocused(true); }}
+                onKeyDown={(event) => { if (event.key === "Escape") setSearchFocused(false); }}
+              />
+            </label>
+            <span className="courses-count" aria-live="polite">{filteredCourses.length} courses</span>
+          </div>
+          {searchFocused && normalizedSearch && <div id="public-course-suggestions" className="autocomplete public-course-suggestions" role="listbox" aria-label="Matching courses">{filteredCourses.slice(0, 8).map((course) => <Link role="option" aria-selected={false} key={course.id} href={`/courses/${course.id}`}><span><strong>{course.code}</strong><small>{course.title}</small></span><span aria-hidden="true">→</span></Link>)}{!filteredCourses.length && <div className="autocomplete-empty">No results found</div>}</div>}
         </div>
         {loading ? <div className="public-course-message" role="status">Loading courses...</div> : error ? <div className="public-course-message" role="alert">{error}</div> : filteredCourses.length ? (
           <div className="public-course-grid">
@@ -68,7 +78,7 @@ export default function CoursesPage() {
             ))}
           </div>
         ) : (
-          <div className="public-course-message">{search ? "No courses match that search." : "No courses are available yet."}</div>
+          <div className="public-course-message">{search ? "No results found" : "No courses are available yet."}</div>
         )}
       </main>
     </div>

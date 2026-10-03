@@ -69,11 +69,12 @@ const QuestionSchema = new Schema({
   courseId: { type: objectId, ref: "Course", required: true, index: true },
   bankId: { type: objectId, ref: "QuestionBank", required: true, index: true },
   question: { type: String, required: true },
-  optionA: { type: String, required: true },
-  optionB: { type: String, required: true },
-  optionC: { type: String, required: true },
-  optionD: { type: String, required: true },
-  correctAnswer: { type: String, required: true, enum: ["A", "B", "C", "D"] },
+  questionType: { type: String, required: true, enum: ["MCQ", "FBQ"], default: "MCQ" },
+  optionA: { type: String, default: null },
+  optionB: { type: String, default: null },
+  optionC: { type: String, default: null },
+  optionD: { type: String, default: null },
+  correctAnswer: { type: String, required: true },
   explanation: { type: String, default: null },
   createdAt: { type: Date, required: true, default: Date.now },
 }, commonOptions);
@@ -95,8 +96,9 @@ const MockAnswerSchema = new Schema({
   attemptId: { type: objectId, ref: "MockAttempt", required: true },
   questionId: { type: objectId, ref: "Question", required: true },
   position: { type: Number, required: true },
-  selectedAnswer: { type: String, default: null, enum: ["A", "B", "C", "D", null] },
-  correctAnswer: { type: String, required: true, enum: ["A", "B", "C", "D"] },
+  questionType: { type: String, required: true, enum: ["MCQ", "FBQ"], default: "MCQ" },
+  selectedAnswer: { type: String, default: null },
+  correctAnswer: { type: String, required: true },
 }, commonOptions);
 MockAnswerSchema.index({ attemptId: 1, position: 1 }, { unique: true, name: "answers_attempt_position_unique" });
 
@@ -114,9 +116,22 @@ const CourseViewSchema = new Schema({
 }, commonOptions);
 CourseViewSchema.index({ userId: 1, courseId: 1 }, { unique: true, name: "views_user_course_unique" });
 
+const StudyProgressSchema = new Schema({
+  userId: { type: objectId, ref: "User", required: true },
+  courseId: { type: objectId, ref: "Course", required: true },
+  activeModuleId: { type: objectId, ref: "Module", default: null },
+  activeUnitId: { type: objectId, ref: "Summary", default: null },
+  viewedModuleIds: { type: [objectId], default: [] },
+  viewedUnitIds: { type: [objectId], default: [] },
+  lastStudiedAt: { type: Date, required: true, default: Date.now },
+}, commonOptions);
+StudyProgressSchema.index({ userId: 1, courseId: 1 }, { unique: true, name: "study_progress_user_course_unique" });
+
 const CourseRequestSchema = new Schema({
   userId: { type: objectId, ref: "User", required: true, index: true },
   requestText: { type: String, required: true, maxlength: 120 },
+  courseCode: { type: String, default: null, maxlength: 20 },
+  courseTitle: { type: String, default: null, maxlength: 160 },
   status: { type: String, required: true, default: "Pending", maxlength: 12 },
   createdAt: { type: Date, required: true, default: Date.now },
 }, commonOptions);
@@ -157,6 +172,7 @@ export const MockAttempt = mongoose.models.MockAttempt || mongoose.model("MockAt
 export const MockAnswer = mongoose.models.MockAnswer || mongoose.model("MockAnswer", MockAnswerSchema, "mockAnswers");
 export const Favorite = mongoose.models.Favorite || mongoose.model("Favorite", FavoriteSchema, "favorites");
 export const CourseView = mongoose.models.CourseView || mongoose.model("CourseView", CourseViewSchema, "courseViews");
+export const StudyProgress = mongoose.models.StudyProgress || mongoose.model("StudyProgress", StudyProgressSchema, "studyProgress");
 export const CourseRequest = mongoose.models.CourseRequest || mongoose.model("CourseRequest", CourseRequestSchema, "courseRequests");
 export const Notification = mongoose.models.Notification || mongoose.model("Notification", NotificationSchema, "notifications");
 export const AdminImport = mongoose.models.AdminImport || mongoose.model("AdminImport", AdminImportSchema, "adminImports");

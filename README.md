@@ -35,6 +35,7 @@ Set admin credentials in a private `.env` file locally and in Render's environme
 2. Create a Web Service from your GitHub repo:
    - **Build command:** `npm install && npm run build`
    - **Start command:** `npm start`
+   - This is a full-stack Next.js Node service. `npm run build` creates `.next`, and `npm start` runs `next start`; do not configure a static publish directory such as `dist`.
 3. Add environment variables in **Render → Your service → Environment**:
    - `MONGODB_URI` (the MongoDB connection string)
    - `MONGODB_DB` (the database containing NounStudyHub collections; required when the URI has no database path)
@@ -42,6 +43,8 @@ Set admin credentials in a private `.env` file locally and in Render's environme
    - `GEMINI_API_KEY`, `AI_DAILY_LIMIT` (optional)
 4. Run `npm run db:create` with the Render MongoDB environment values to create the required indexes. Mongoose creates collections when records are first written; no table migration step is required.
 5. (Optional) To load demo courses and questions, run `npm run db:setup` with `MONGODB_URI` set for the target cluster.
+
+The current app uses database-backed session tokens rather than JWT and has no payment-provider integration, so no JWT secret or payment key is required. Keep all configured credentials in Render's environment settings; do not commit `.env.local` or other populated environment files.
 
 ## Database setup commands
 

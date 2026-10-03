@@ -1,5 +1,5 @@
 import { connectToDatabase } from "@/db";
-import { User } from "@/db/models";
+import { Notification, User } from "@/db/models";
 import { createSession, hashPassword, publicUser, safeText } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     const existingMatriculation = await User.findOne({ matriculationNumber }).select("_id").lean();
     if (existingMatriculation) return Response.json({ error: "Account already exists." }, { status: 409 });
     const user = await User.create({ username, passwordHash: hashPassword(password), matriculationNumber });
+    await Notification.create({ userId: null, type: "admin", message: `New student registered: ${username}`, link: "/admin/dashboard" }).catch(() => undefined);
     await createSession(user._id.toString());
     return Response.json({ user: publicUser(user) }, { status: 201 });
   } catch (error) {

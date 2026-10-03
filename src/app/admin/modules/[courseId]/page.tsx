@@ -2,4 +2,30 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
-export default function ManageModulesPage() { const params = useParams<{ courseId: string }>(); const router = useRouter(); const [title, setTitle] = useState(""); const [summary, setSummary] = useState(""); const [saved, setSaved] = useState(false); async function save() { const response = await fetch("/api/admin/modules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ courseId: params.courseId, title, summary, summaryTitle: title }) }); if (response.ok) { setSaved(true); setTitle(""); setSummary(""); } } return <main className="module-admin-page"><div className="module-admin-wrap"><button className="admin-back-button" onClick={() => router.push("/admin/dashboard")}>← Back to dashboard</button><div className="admin-kicker">COURSE CONTENT</div><h1>Manage modules</h1><p className="module-admin-intro">Add a module and its summary content for this course. This is a dedicated workspace for structured course notes.</p><div className="module-editor"><label>Module title<input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Introduction to microeconomics"/></label><label>Summary content<textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Write the summary content here…" rows={10}/></label>{saved && <div className="admin-success">✓ Summary saved successfully.</div>}<button onClick={save}>Save module and summary <span>→</span></button></div></div></main>; }
+export default function ManageModulesPage() {
+	const params = useParams<{ courseId: string }>();
+	const router = useRouter();
+	const [title, setTitle] = useState("");
+	const [summary, setSummary] = useState("");
+	const [saved, setSaved] = useState(false);
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState("");
+
+	async function save() {
+		setSaving(true);
+		setSaved(false);
+		setError("");
+		try {
+			const response = await fetch("/api/admin/modules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ courseId: params.courseId, title, summary, summaryTitle: title }) });
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.error || "Could not save module and summary.");
+			setSaved(true);
+			setTitle("");
+			setSummary("");
+		} catch (saveError) {
+			setError(saveError instanceof Error ? saveError.message : "Could not save module and summary.");
+		} finally { setSaving(false); }
+	}
+
+	return <main className="module-admin-page"><div className="module-admin-wrap"><button className="admin-back-button" onClick={() => router.push("/admin/dashboard")}>← Back to dashboard</button><div className="admin-kicker">COURSE CONTENT</div><h1>Manage modules</h1><p className="module-admin-intro">Add a module and its summary content for this course. This is a dedicated workspace for structured course notes.</p><div className="module-editor"><label>Module title<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Introduction to microeconomics"/></label><label>Summary content<textarea value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="Write the summary content here…" rows={10}/></label>{error && <div className="form-error" role="alert">{error}</div>}{saved && <div className="admin-success" role="status">✓ Summary saved successfully.</div>}<button disabled={saving || !title.trim()} onClick={save}>{saving ? "Saving…" : "Save module and summary"} <span>→</span></button></div></div></main>;
+}
