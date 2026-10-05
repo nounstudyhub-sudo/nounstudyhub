@@ -64,24 +64,24 @@ export default function CourseDetailsView({ courseId, initialCourse, onBack, onS
 
   return <div className="course-detail">
     {onBack ? <button className="back-link" onClick={onBack}><span aria-hidden="true">←</span> Back to courses</button> : <Link className="back-link" href="/courses"><span aria-hidden="true">←</span> Back to courses</Link>}
-    <section className="course-hero">
-      <div className="course-hero-icon">{course.code.slice(0, 1)}</div>
-      <div>
-        <div className="course-code">{course.code}</div>
-        <h1>{course.title}</h1>
-        <p>{course.description}</p>
-        <div className="course-detail-meta"><span>{details?.course.questionCount ?? course.questionCount} questions available</span><span>{details?.modules.length ?? course.moduleCount ?? 0} learning modules</span></div>
-      </div>
-      <button type="button" className={`detail-favorite ${favorite ? "selected" : ""}`} aria-pressed={favorite} onClick={() => void toggleFavorite()}>{favorite ? "Saved" : "Save course"}</button>
-      <nav className="course-detail-actions" aria-label="Course actions">
-        <button className="button button-secondary" onClick={() => { const bank = banks[0]; onStartMock?.(bank?.year, bank?.questionCount); }}>Past-question practice</button>
-        <button className="button" onClick={() => onStartMock?.()}>Attempt a mock <span aria-hidden="true">→</span></button>
-        <button className="button button-light" onClick={browseQuestions}>Browse questions <span aria-hidden="true">→</span></button>
-      </nav>
-    </section>
-
     <div className="course-detail-grid">
       <main className="detail-main course-detail-main">
+        <section className="course-header-card">
+          <div className="course-header-code"><span className="course-code">{course.code}</span></div>
+          <h1>{course.title}</h1>
+          {course.description && <p className="course-header-description">{course.description}</p>}
+          <div className="course-header-metrics">
+            <span>{details?.course.questionCount ?? course.questionCount} questions available</span>
+            <span>{details?.modules.length ?? course.moduleCount ?? 0} learning modules</span>
+            <button type="button" className={favorite ? "course-saved selected" : "course-saved"} aria-pressed={favorite} onClick={() => void toggleFavorite()}>{favorite ? "✓ Saved" : "Save course"}</button>
+          </div>
+          <nav className="course-detail-actions" aria-label="Course actions">
+            <button className="button" onClick={() => { const bank = banks[0]; onStartMock?.(bank?.year, bank?.questionCount); }}>Past-question practice</button>
+            <button className="button button-secondary" onClick={() => onStartMock?.()}>Attempt a mock <span aria-hidden="true">→</span></button>
+            <button className="button button-secondary" onClick={browseQuestions}>Browse questions <span aria-hidden="true">→</span></button>
+          </nav>
+        </section>
+
         <section className="course-detail-card">
           <div className="course-section-heading"><div><h2>Course modules</h2><p>Build understanding one module at a time.</p></div></div>
           {current?.error ? <div className="course-empty-state" role="alert">{current.error}</div> : !details ? <div className="course-empty-state" role="status">Loading course content…</div> : details.modules.length ? <div className="course-module-list">{details.modules.map((module, index) => {
