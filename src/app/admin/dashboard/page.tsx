@@ -2,13 +2,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminContentManager from "../admin-content-manager";
-import csvPrompt from "../question-csv-prompt";
 import { ExitIcon, NotificationCenter, type NotificationItem } from "../../student-data-views";
 
 type AdminStats = { users: number; courses: number; questions: number; attempts: number; pending: number };
 type AdminCourse = { id: string; code: string; title: string; description: string; questionCount: number };
 type AdminRequest = { request: { id: string; requestText: string; status: string; createdAt: string; userId: string }; user: { username: string } };
 const adminNav = [{ key: "overview", label: "Dashboard", icon: "▦" }, { key: "users", label: "Users", icon: "◯" }, { key: "leaderboard", label: "Leaderboard", icon: "↗" }, { key: "courses", label: "Courses", icon: "▤" }, { key: "summaries", label: "Summaries", icon: "✦" }, { key: "questions", label: "Questions", icon: "≡" }, { key: "requests", label: "Requested Courses", icon: "＋" }];
+const prompt = `Convert the attached PDF question bank into CSV using exactly these columns: question,questionType,optionA,optionB,optionC,optionD,correctAnswer,explanation.
+Identify if the question is Multiple Choice ('MCQ') or Fill-in-the-Blank ('FBQ').
+For MCQs: Put the four options into optionA to optionD, and the correct option letter (A, B, C, or D) in correctAnswer.
+For FBQs: Leave optionA to optionD empty, and put the exact missing word/phrase in correctAnswer.
+In the explanation column, write one short sentence explaining the answer. Return only valid CSV data with the header row. Properly escape commas and quotation marks.`;
+
 async function adminFetch(url: string, options?: RequestInit) {
   const response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) } });
   const contentType = response.headers.get("content-type") || "";
@@ -77,7 +82,7 @@ export default function AdminDashboardPage({ initialSection = "overview" }: { in
         {section === "courses" && <AdminContentManager section="courses" notify={notify}/>}
         {section === "summaries" && <AdminContentManager section="summaries" notify={notify}/>}
         {section === "questions" && <AdminContentManager section="questions" notify={notify}/>}
-        {section === "banks" && <BanksSection courses={courses} form={importForm} setForm={setImportForm} onImport={importCsv} prompt={csvPrompt}/>}
+        {section === "banks" && <BanksSection courses={courses} form={importForm} setForm={setImportForm} onImport={importCsv} prompt={prompt}/>}
         {section === "modules" && <ModulesSection courses={courses} onModules={(id) => router.push(`/admin/modules/${id}`)}/>}
         {section === "users" && <UsersSection users={users} query={userSearch} setQuery={setUserSearch}/>}
         {section === "requests" && <RequestsSection requests={requests} onUpdate={updateRequest}/>}
