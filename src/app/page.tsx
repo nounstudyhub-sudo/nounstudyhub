@@ -1,10 +1,10 @@
-'use client';
+'use client';import { CourseUnifiedView } from "./course-unified-view";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import ReviewView from "./review-view";
 import { AiPerformanceAnalysis, AiPracticePanel, AiStudyAssistant, MockQuestionReview, type AiCourse } from "./ai-components";
-import { ExitIcon, NotificationCenter, StudentCourseContent, StudentDashboard, StudentHistory, StudentProfile, StudentRequests, type NotificationItem } from "./student-data-views";
+import { ExitIcon, NotificationCenter, StudentDashboard, StudentHistory, StudentProfile, StudentRequests, type NotificationItem } from "./student-data-views";
 
 type User = { id: string; username: string; matriculationNumber: string; phoneNumber: string | null; role: string; isActive: boolean; createdAt: string };
 type Course = { id: string; code: string; title: string; description: string; questionCount: number; moduleCount?: number; favorite?: boolean };
@@ -401,7 +401,7 @@ export default function HomePage() {
   const body = view === "dashboard" ? <Dashboard user={user} onView={setView} onCourse={openCourse} onMock={(course) => startSetup(course)} onViewAll={() => setView("courses")} courses={courses} favorites={favorites} renderDatabase onAttempt={openAttemptResult}/>
     : view === "courses" ? <CourseLibrary courses={courses} onCourse={openCourse} onMock={startSetup} favorites={favorites} onFavorite={toggleFavorite}/>
     : view === "saved" ? <SavedCourses favorites={favorites} onCourse={openCourse} onMock={startSetup} onFavorite={toggleFavorite} onBrowse={() => setView("courses")}/>
-    : view === "course" ? user.role === "student" ? <StudentCourseContent key={selectedCourse.id} course={selectedCourse} onBack={() => setView("courses")} onMock={(year, count) => startSetup(selectedCourse, year ?? null, count ?? selectedCourse.questionCount)}/> : <CourseDetail course={selectedCourse} onBack={() => setView("courses")} onMock={() => startSetup(selectedCourse)} onSummary={() => setView("summary")} onAiChat={() => { setAssistantCourseId(selectedCourse.id); setView("ai-chat"); }} favorite={favorites.some((item) => item.id === selectedCourse.id)} onFavorite={() => toggleFavorite(selectedCourse)}/>
+    : view === "course" ? <CourseUnifiedView course={selectedCourse} onBack={() => setView("courses")} onMock={(year, count) => startSetup(selectedCourse, year, count)}/>
     : view === "setup" ? <Setup course={selectedCourse} onBack={() => setView("course")} onStart={startMock}/>
     : view === "mock" ? (mockQuestions.length ? <MockScreen course={selectedCourse} questions={mockQuestions} onSubmit={submitMock}/> : <EmptyState title="No questions available" text="This mock could not be started because there are no questions to load."/>)
     : view === "result" && mockResult ? <ResultView course={selectedCourse} attemptId={mockAttemptId} result={mockResult} onReview={() => setView("review")} onBack={() => setView("course")}/>
