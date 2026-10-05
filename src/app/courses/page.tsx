@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import CourseDetailsView from "../../course-details-view";
+import CourseDetailsView from "../course-details-view";
 
 export default function CoursePage() {
   const { courseId } = useParams<{ courseId: string }>();
