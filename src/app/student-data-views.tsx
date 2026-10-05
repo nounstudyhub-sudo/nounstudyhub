@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Course = { id: string; code: string; title: string; description: string; questionCount: number };
 type Attempt = { attempt: { id: string; totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; startedAt: string; timeUsed: number }; course: Course };
@@ -141,10 +141,15 @@ function nationalPhoneDigits(phoneNumber: string | null) {
 
 export function PhoneNumberField({ phoneNumber, onSave, onSaved }: { phoneNumber: string | null; onSave: (phone: string) => Promise<void>; onSaved?: () => void }) {
   const [phone, setPhone] = useState(() => nationalPhoneDigits(phoneNumber));
-  const [editing, setEditing] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingPhone) inputRef.current?.focus();
+  }, [isEditingPhone]);
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -157,7 +162,7 @@ export function PhoneNumberField({ phoneNumber, onSave, onSaved }: { phoneNumber
     setError("");
     try {
       await onSave(`+234-${phone}`);
-      setEditing(false);
+      setIsEditingPhone(false);
       setSaved(true);
       onSaved?.();
     } catch (saveError) {
@@ -170,8 +175,8 @@ export function PhoneNumberField({ phoneNumber, onSave, onSaved }: { phoneNumber
     <form className="phone-number-form" onSubmit={(event) => void save(event)}>
       <div className="phone-number-control">
         <span className="phone-number-prefix" aria-hidden="true">+234-</span>
-        <input aria-label="Phone number" type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} pattern="[0-9]{10}" required disabled={!editing || saving} value={phone} onChange={(event) => { setPhone(event.target.value.replace(/\D/g, "").slice(0, 10)); setSaved(false); setError(""); }} placeholder="9014008284" />
-        <button className="phone-number-action" type={editing ? "submit" : "button"} disabled={saving} onClick={() => { if (!editing) { setPhone(nationalPhoneDigits(phoneNumber)); setEditing(true); setSaved(false); setError(""); } }}>{saving ? "Saving…" : editing ? "Save" : "Edit"}</button>
+        <input ref={inputRef} aria-label="Phone number" type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} pattern="[0-9]{10}" required disabled={!isEditingPhone || saving} value={phone} onChange={(event) => { setPhone(event.target.value.replace(/\D/g, "").slice(0, 10)); setSaved(false); setError(""); }} placeholder="9014008284" />
+        <button className="phone-number-action" type={isEditingPhone ? "submit" : "button"} disabled={saving} onClick={() => { if (!isEditingPhone) { setPhone(nationalPhoneDigits(phoneNumber)); setIsEditingPhone(true); setSaved(false); setError(""); } }}>{saving ? "Saving…" : isEditingPhone ? "Save" : "Edit"}</button>
       </div>
     </form>
     {saved && <span className="phone-number-feedback" role="status">Phone number updated.</span>}

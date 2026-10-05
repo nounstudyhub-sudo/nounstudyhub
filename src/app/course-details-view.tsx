@@ -81,9 +81,10 @@ export default function CourseDetailsView({ courseId, initialCourse, onBack, onS
     </section>
 
     <div className="course-detail-grid">
-      <section className="detail-main">
-        <div className="section-row"><div><h2>Course modules</h2><p>Build understanding one module at a time.</p></div></div>
-        {current?.error ? <p className="small-note" role="alert">{current.error}</p> : !details ? <p className="small-note" role="status">Loading course content…</p> : details.modules.length ? <div className="module-list">{details.modules.map((module, index) => {
+      <main className="detail-main course-detail-main">
+        <section className="course-detail-card">
+          <div className="course-section-heading"><div><h2>Course modules</h2><p>Build understanding one module at a time.</p></div></div>
+          {current?.error ? <div className="course-empty-state" role="alert">{current.error}</div> : !details ? <div className="course-empty-state" role="status">Loading course content…</div> : details.modules.length ? <div className="course-module-list">{details.modules.map((module, index) => {
           const expanded = expandedModuleId === module.id;
           return <section className="module-row" key={module.id}>
             <span className="module-number">{String(index + 1).padStart(2, "0")}</span>
@@ -99,19 +100,28 @@ export default function CourseDetailsView({ courseId, initialCourse, onBack, onS
             <span className="module-status">{index === 0 ? "In progress" : "Not started"}</span>
             <span className="icon" aria-hidden="true">⌄</span>
           </section>;
-        })}</div> : <p className="small-note">No course modules available yet.</p>}
-      </section>
+          })}</div> : <div className="course-empty-state">No course modules available yet.</div>}
+        </section>
 
-      <aside className="detail-side" id="course-question-banks">
-        <section className="side-card">
-          <div className="side-card-title"><strong>Question banks</strong><span>{banks.length} {banks.length === 1 ? "year" : "years"}</span></div>
-          {banks.map((bank) => <button type="button" className="year-row" key={bank.id} onClick={() => onStartMock?.(bank.year, bank.questionCount)}><span>{bank.year}</span><small>{bank.questionCount} questions</small><span className="icon" aria-hidden="true">→</span></button>)}
-          {details && banks.length === 0 && <p className="small-note">No question banks available for this course yet.</p>}
-          {!details && !current?.error && <p className="small-note">Loading question banks…</p>}
+        <section className="course-detail-card" id="course-question-banks">
+          <div className="course-section-heading"><div><h2>Question banks</h2></div><span className="course-year-count">{banks.length} {banks.length === 1 ? "year" : "years"}</span></div>
+          {banks.length ? <div className="course-bank-list">{banks.map((bank) => <button type="button" className="course-bank-row" key={bank.id} onClick={() => onStartMock?.(bank.year, bank.questionCount)}><strong>{bank.year}</strong><span>{bank.questionCount} questions</span><span aria-hidden="true">→</span></button>)}</div> : details ? <div className="course-empty-state">No question banks available for this course yet.</div> : <div className="course-empty-state" role="status">{current?.error ?? "Loading question banks…"}</div>}
+        </section>
+
+      </main>
+
+      <aside className="detail-side course-detail-sidebar">
+        <section className="course-test-banner">
+          <span className="eyebrow">READY TO TEST YOURSELF?</span>
+          <h2>Put your learning into practice.</h2>
+          <button className="button button-light" onClick={() => onStartMock?.()}>Attempt a mock <span aria-hidden="true">→</span></button>
+        </section>
+        <section className="course-study-banner">
+          <div className="eyebrow">STUDY SMARTER</div>
+          <p>Try a 20-question mock to warm up, or ask the AI tutor about this course.</p>
+          <div className="course-study-actions"><button className="button" onClick={() => onStartMock?.()}>Set up a mock</button><button className="button button-secondary" onClick={onAskAi}>Ask AI about this course <span aria-hidden="true">→</span></button></div>
         </section>
       </aside>
     </div>
-
-    <section className="course-detail-cta"><div><span className="eyebrow">STUDY SMARTER</span><h2>Try a 20-question mock to warm up, or ask the AI tutor about this course.</h2></div><div><button className="button" onClick={() => onStartMock?.()}>Set up a mock</button><button className="button button-light" onClick={onAskAi}>Ask AI about this course <span aria-hidden="true">→</span></button></div></section>
   </div>;
 }
