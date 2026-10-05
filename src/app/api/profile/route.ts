@@ -6,9 +6,14 @@ import { clearSession, requireUser, publicUser, safeText } from "@/lib/auth";
 export async function PATCH(request: Request) {
   try {
     const user = await requireUser();
-    const body = await request.json();
+    let payload: unknown;
+    try { payload = await request.json(); }
+    catch { return Response.json({ error: "Invalid JSON payload." }, { status: 400 }); }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return Response.json({ error: "Invalid profile payload." }, { status: 400 });
+    const phoneNumber = (payload as Record<string, unknown>).phoneNumber;
+    if (typeof phoneNumber !== "string" || !/^\+234-\d{10}$/.test(phoneNumber)) return Response.json({ error: "Phone number must use +234- followed by exactly 10 digits." }, { status: 400 });
     await connectToDatabase();
-    const updated = await User.findByIdAndUpdate(user.id, { phoneNumber: safeText(body.phoneNumber, 30) || null }, { new: true }).lean();
+    const updated = await User.findByIdAndUpdate(user.id, { phoneNumber: safeText(phoneNumber, 30) }, { new: true }).lean();
     if (!updated) return Response.json({ error: "Please log in." }, { status: 401 });
     return Response.json({ user: publicUser(updated) });
   } catch { return Response.json({ error: "Please log in." }, { status: 401 }); }

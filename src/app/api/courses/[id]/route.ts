@@ -1,5 +1,6 @@
 import { connectToDatabase } from "@/db";
-import { Course, Module, Question, QuestionBank, Summary, objectIdOrNull, withId } from "@/db/models";
+import { Course, Favorite, Module, Question, QuestionBank, Summary, objectIdOrNull, withId } from "@/db/models";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   await connectToDatabase();
   const course = await Course.findById(courseId).lean();
   if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
+  const user = await getCurrentUser();
   const [bankRows, moduleRows, questionCount, bankCounts] = await Promise.all([
     QuestionBank.find({ courseId }).sort({ year: 1 }).lean(),
     Module.find({ courseId }).sort({ position: 1 }).lean(),
@@ -28,5 +30,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const countByBank = new Map(bankCounts.map((row) => [String(row._id), row.count]));
   const banks = bankRows.map((bank) => ({ ...withId(bank), questionCount: countByBank.get(String(bank._id)) ?? 0 }));
   const modules = moduleRows.map((module) => ({ ...withId(module), units: summariesByModule.get(String(module._id)) ?? [] }));
-  return Response.json({ course: { ...withId(course), questionCount }, banks, modules });
+  const favorite = user ? Boolean(await Favorite.exists({ userId: user.id, courseId })) : false;
+  return Response.json({ course: { ...withId(course), questionCount, favorite }, banks, modules });
 }

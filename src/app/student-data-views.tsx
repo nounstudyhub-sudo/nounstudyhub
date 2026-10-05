@@ -133,6 +133,52 @@ export function StudentCourseContent({ course, onMock, onBack }: { course: Cours
 type CourseRequest = { id: string; requestText: string; courseCode?: string; courseTitle?: string; status: string; createdAt: string };
 type CourseMatch = { id: string; code: string; title: string };
 
+function nationalPhoneDigits(phoneNumber: string | null) {
+  const digits = (phoneNumber ?? "").replace(/\D/g, "");
+  const national = digits.startsWith("234") ? digits.slice(3) : digits.startsWith("0") ? digits.slice(1) : digits;
+  return national.slice(-10);
+}
+
+export function PhoneNumberField({ phoneNumber, onSave, onSaved }: { phoneNumber: string | null; onSave: (phone: string) => Promise<void>; onSaved?: () => void }) {
+  const [phone, setPhone] = useState(() => nationalPhoneDigits(phoneNumber));
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!/^\d{10}$/.test(phone)) {
+      setError("Enter exactly 10 digits.");
+      setSaved(false);
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(`+234-${phone}`);
+      setEditing(false);
+      setSaved(true);
+      onSaved?.();
+    } catch (saveError) {
+      setSaved(false);
+      setError(saveError instanceof Error ? saveError.message : "Could not save phone number.");
+    } finally { setSaving(false); }
+  }
+
+  return <div className="phone-number-field">
+    <form className="phone-number-form" onSubmit={(event) => void save(event)}>
+      <div className="phone-number-control">
+        <span className="phone-number-prefix" aria-hidden="true">+234-</span>
+        <input aria-label="Phone number" type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} pattern="[0-9]{10}" required disabled={!editing || saving} value={phone} onChange={(event) => { setPhone(event.target.value.replace(/\D/g, "").slice(0, 10)); setSaved(false); setError(""); }} placeholder="9014008284" />
+        <button className="phone-number-action" type={editing ? "submit" : "button"} disabled={saving} onClick={() => { if (!editing) { setPhone(nationalPhoneDigits(phoneNumber)); setEditing(true); setSaved(false); setError(""); } }}>{saving ? "Saving…" : editing ? "Save" : "Edit"}</button>
+      </div>
+    </form>
+    {saved && <span className="phone-number-feedback" role="status">Phone number updated.</span>}
+    {error && <span className="phone-number-feedback error" role="alert">{error}</span>}
+  </div>;
+}
+
 type ProfileIconName = "user" | "id" | "calendar" | "phone" | "lock" | "clock" | "check" | "bell" | "chevron";
 
 function ProfileIcon({ name, size = 18 }: { name: ProfileIconName; size?: number }) {
@@ -240,16 +286,11 @@ export function StudentRequests({ onBack }: { onBack: () => void }) {
 }
 
 export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
-  user: { username: string; matriculationNumber: string; phoneNumber: string | null; createdAt: string; isActive: boolean };
+  user: { username: string; matriculationNumber: string; phoneNumber: string | null; createdAt: string; isActive: boolean; role: string };
   onSave: (phone: string) => Promise<void>;
   onDelete: () => void;
   onViewActivity: () => void;
 }) {
-  const [phone, setPhone] = useState(user.phoneNumber ?? "");
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [editingPhone, setEditingPhone] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordError, setPasswordError] = useState("");
@@ -264,27 +305,7 @@ export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
   const sessionStartedAt = new Date();
   const createdAt = new Date(user.createdAt);
   const accountCreated = `${createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}, ${createdAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
-
-  async function save() {
-    const trimmedPhone = phone.trim();
-    const digits = trimmedPhone.replace(/\D/g, "");
-    if (trimmedPhone && (!/^\+?[0-9().\s-]+$/.test(trimmedPhone) || digits.length < 7 || digits.length > 15)) {
-      setError("Enter a valid phone number with 7 to 15 digits.");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    try {
-      await onSave(trimmedPhone);
-      setPhone(trimmedPhone);
-      setSaved(true);
-      setProfileUpdatedAt(new Date());
-      setEditingPhone(false);
-    } catch (saveError) {
-      setSaved(false);
-      setError(saveError instanceof Error ? saveError.message : "Could not save profile.");
-    } finally { setSaving(false); }
-  }
+  const accountType = user.role === "admin" ? "Admin account" : "Student account";
 
   async function changePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -328,7 +349,7 @@ export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
     <div className="student-profile-grid">
       <section className="student-profile-panel student-account-panel" aria-labelledby="student-account-heading">
         <div className="student-account-banner">
-          <div className="student-account-identity"><span className="student-account-initial">{user.username.slice(0, 1).toUpperCase()}</span><span><strong>{user.username}</strong><small>Student account</small></span></div>
+          <div className="student-account-identity"><span className="student-account-initial">{user.username.slice(0, 1).toUpperCase()}</span><span><strong>{user.username}</strong><small>{accountType}</small></span></div>
           <span className={`student-active-pill ${user.isActive ? "" : "inactive"}`}><i/>{user.isActive ? "Active" : "Inactive"}</span>
         </div>
         <h2 className="student-profile-section-title" id="student-account-heading">Account details</h2>
@@ -336,9 +357,8 @@ export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
           <div className="student-account-row"><div className="student-account-label"><ProfileIcon name="user"/><span>Username</span></div><strong>{user.username}</strong></div>
           <div className="student-account-row student-matric-row"><div className="student-account-label"><ProfileIcon name="id"/><span>Matriculation number</span></div><span className="student-account-value">{user.matriculationNumber}</span><small>One account per matriculation number</small></div>
           <div className="student-account-row"><div className="student-account-label"><ProfileIcon name="calendar"/><span>Date joined</span></div><strong>{createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</strong></div>
-          <div className="student-account-row student-phone-row"><div className="student-account-label"><ProfileIcon name="phone"/><span>Phone number <small>Optional</small></span></div><form className="student-phone-inline-form" onSubmit={(event) => { event.preventDefault(); void save(); }}>{editingPhone ? <input aria-label="Phone number" type="tel" autoComplete="tel" value={phone} onChange={(event) => { setPhone(event.target.value); setSaved(false); setError(""); }} placeholder="Add a phone number"/> : <strong>{phone || "+ Add phone number"}</strong>}<button type={editingPhone ? "submit" : "button"} className="student-add-phone" disabled={saving} onClick={() => { if (!editingPhone) { setPhone(user.phoneNumber ?? ""); setEditingPhone(true); setError(""); } }}>{saving ? "Saving…" : editingPhone ? "Save" : "Edit"}</button></form></div>
+          <div className="student-account-row student-phone-row"><div className="student-account-label"><ProfileIcon name="phone"/><span>Phone number <small>Optional</small></span></div><PhoneNumberField phoneNumber={user.phoneNumber} onSave={onSave} onSaved={() => setProfileUpdatedAt(new Date())}/></div>
         </div>
-        {(saved || error) && <div className="student-profile-feedback">{saved && <span role="status">Phone number updated.</span>}{error && <span role="alert">{error}</span>}</div>}
         {passwordSaved && <div className="student-profile-feedback" role="status">Password updated successfully.</div>}
       </section>
 
@@ -351,7 +371,7 @@ export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
         </section>
         <section className="student-profile-panel student-status-panel">
           <div><h2>Account status</h2><span className={`student-active-pill ${user.isActive ? "" : "inactive"}`}><i/>{user.isActive ? "Active" : "Inactive"}</span></div>
-          <p>{user.isActive ? "You have access to all student features on NounStudyHub." : "Your account access is currently inactive."}</p>
+          <p>{user.isActive ? `You have access to all ${accountType.toLowerCase().replace(" account", "")} features on NounStudyHub.` : "Your account access is currently inactive."}</p>
         </section>
       </div>
 

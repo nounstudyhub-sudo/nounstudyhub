@@ -17,7 +17,14 @@ type MockResult = {
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
-    const { attemptId, answers, timeUsed } = await request.json();
+    let payload: unknown;
+    try { payload = await request.json(); }
+    catch { return Response.json({ error: "Invalid JSON payload." }, { status: 400 }); }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return Response.json({ error: "Invalid request payload." }, { status: 400 });
+    const { attemptId, answers, timeUsed } = payload as Record<string, unknown>;
+    if (typeof attemptId !== "string" || !objectIdOrNull(attemptId)) return Response.json({ error: "A valid mock attempt ID is required." }, { status: 400 });
+    if (!Number.isInteger(timeUsed) || Number(timeUsed) < 1 || Number(timeUsed) > 86400) return Response.json({ error: "Time used must be a positive integer number of seconds." }, { status: 400 });
+    if (!answers || typeof answers !== "object" || Array.isArray(answers) || !Object.entries(answers).every(([id, value]) => id.length <= 64 && typeof value === "string" && value.length <= 2000)) return Response.json({ error: "Answers must be an object containing text values." }, { status: 400 });
     await connectToDatabase();
     const attemptObjectId = objectIdOrNull(attemptId);
     if (!attemptObjectId) return Response.json({ error: "Mock attempt not found." }, { status: 404 });
@@ -34,7 +41,7 @@ export async function POST(request: Request) {
         if (!attempt.submittedAt) {
           const answerRows = await MockAnswer.find({ attemptId: attempt._id }).session(session);
           if (!answerRows.length) throw new Error("No saved answers found for this attempt.");
-          const submitted = answers && typeof answers === "object" ? answers as Record<string, string> : {};
+          const submitted = answers as Record<string, string>;
           let correct = 0;
           let unanswered = 0;
           for (const row of answerRows) {
@@ -55,7 +62,8 @@ export async function POST(request: Request) {
           attempt.correctAnswers = correct;
           attempt.unanswered = unanswered;
           attempt.percentage = attempt.totalQuestions ? Math.round((correct / attempt.totalQuestions) * 100) : 0;
-          attempt.timeUsed = Math.max(0, Number(timeUsed) || 0);
+          const elapsedAtServer = Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000);
+          attempt.timeUsed = Math.max(1, Math.min(Number(timeUsed), attempt.timeLimit * 60, elapsedAtServer));
           attempt.submittedAt = new Date();
           newlySubmitted = true;
           await attempt.save({ session });

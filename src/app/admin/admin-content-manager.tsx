@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./admin-content.css";
 import { TrashIcon } from "../student-data-views";
+import csvPrompt from "./question-csv-prompt";
 
 type Section = "courses" | "summaries" | "questions";
 type Course = { id: string; code: string; title: string; description: string; moduleCount: number; unitCount: number; questionCount: number };
@@ -10,12 +11,6 @@ type Module = { id: string; title: string; position: number; unitCount: number }
 type Unit = { id: string; title: string; content: string };
 type Bank = { id: string; year: number; questionCount: number };
 type Dialog = { mode: "add" | "edit" | "view"; unit?: Unit };
-
-const csvPrompt = `Convert the attached PDF question bank into CSV using exactly these columns: question,questionType,optionA,optionB,optionC,optionD,correctAnswer,explanation.
-Identify if the question is Multiple Choice ('MCQ') or Fill-in-the-Blank ('FBQ').
-For MCQs: Put the four options into optionA to optionD, and the correct option letter (A, B, C, or D) in correctAnswer.
-For FBQs: Leave optionA to optionD empty, and put the exact missing word/phrase in correctAnswer.
-In the explanation column, write one short sentence explaining the answer. Return only valid CSV data with the header row. Properly escape commas and quotation marks.`;
 
 async function adminRequest(url: string, options?: RequestInit) {
   const response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) } });

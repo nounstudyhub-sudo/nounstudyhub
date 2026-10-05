@@ -3,7 +3,12 @@ import { Course, CourseRequest, Notification, withId } from "@/db/models";
 import { requireUser, safeText } from "@/lib/auth";
 
 export async function GET() {
-  try { const user = await requireUser(); await connectToDatabase(); const rows = await CourseRequest.find({ userId: user.id }).sort({ createdAt: -1 }).lean(); return Response.json({ requests: rows.map(withId) }); }
+  try {
+    const user = await requireUser();
+    await connectToDatabase();
+    const rows = await CourseRequest.find({ userId: user._id }).sort({ createdAt: -1 }).lean();
+    return Response.json({ requests: rows.map(withId) });
+  }
   catch { return Response.json({ error: "Please log in." }, { status: 401 }); }
 }
 
