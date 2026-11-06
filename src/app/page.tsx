@@ -230,12 +230,14 @@ function Dashboard({ user, onView, onCourse, onMock, onViewAll, courses, favorit
 function Metric({ label, value, trend, note, tone, icon, onClick }: { label: string; value: string; trend: string; note: string; tone: string; icon: string; onClick?: () => void }) { return <div className={onClick ? "metric-card clickable" : "metric-card"} onClick={onClick} role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined} onKeyDown={onClick ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); } } : undefined}><div className={`metric-icon ${tone}`}><Icon name={icon}/></div><div><span>{label}</span><strong>{value}</strong><small><b className={tone === "orange" ? "neutral" : "positive"}>{trend}</b> {note}</small></div></div>; }
 function AttemptRow({ item, onClick }: { item: Attempt; onClick: () => void }) { return <button className="attempt-row" onClick={onClick}><span className="attempt-course-icon">{item.course.code[0]}</span><span className="attempt-info"><strong>{item.course.code}</strong><small>{item.course.title}</small></span><span className="attempt-date">{new Date(item.attempt.startedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span><span className="attempt-score"><strong>{item.attempt.correctAnswers}/{item.attempt.totalQuestions}</strong><small>{item.attempt.percentage}%</small></span><Icon name="arrow"/></button>; }
 
-function CourseLibrary({ courses, onCourse, onMock, favorites, onFavorite }: { courses: Course[]; onCourse: (course: Course) => void; onMock: (course: Course) => void; favorites: Course[]; onFavorite: (course: Course) => void | Promise<void> }) {
+function CourseLibrary({ courses, onCourse, onMock, favorites, onFavorite, loading = false, error = "" }: { courses: Course[]; onCourse: (course: Course) => void; onMock: (course: Course) => void; favorites: Course[]; onFavorite: (course: Course) => void | Promise<void>; loading?: boolean; error?: string }) {
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return courses.filter((course) => `${course.code} ${course.title}`.toLowerCase().includes(normalized));
+    return courses
+      .filter((course) => `${course.code} ${course.title}`.toLowerCase().includes(normalized))
+      .sort((first, second) => first.title.localeCompare(second.title, undefined, { sensitivity: "base" }));
   }, [courses, query]);
   return <div>
     <PageHeading eyebrow="YOUR STUDY LIBRARY" title="All courses" text="Find your next focus area and start learning at your pace." action={<Button onClick={() => document.getElementById("library-search")?.focus()}><Icon name="search"/> Search courses</Button>}/>
@@ -243,8 +245,10 @@ function CourseLibrary({ courses, onCourse, onMock, favorites, onFavorite }: { c
       <div className="library-toolbar"><SearchField id="library-search" value={query} onChange={setQuery} onFocus={() => setSearchFocused(true)} placeholder="Search Courses"/><span>{filtered.length} courses available</span></div>
       {searchFocused && query.trim() && <div className="autocomplete library-autocomplete" role="listbox" aria-label="Matching courses">{filtered.slice(0, 8).map((course) => <button type="button" role="option" aria-selected={false} key={course.id} onMouseDown={(event) => event.preventDefault()} onClick={() => { setSearchFocused(false); onCourse(course); }}><span className="mini-course-icon">{course.code[0]}</span><span><strong>{course.code}</strong><small>{course.title}</small></span><Icon name="arrow"/></button>)}{!filtered.length && <div className="autocomplete-empty">No results found</div>}</div>}
     </div>
-    <div className="card-grid library-grid">{filtered.map((course) => <CourseCard key={course.id} course={course} onOpen={() => onCourse(course)} onMock={() => onMock(course)} favorite={favorites.some((favorite) => favorite.id === course.id)} onFavorite={() => onFavorite(course)}/>)}</div>
-    {filtered.length === 0 && <EmptyState title="No courses found" text="Try a different course code or title."/>}
+    {error ? <div className="form-error" role="alert">{error}</div> : loading ? <div className="loading-state" role="status"><span className="loader"/> Loading courses…</div> : <>
+      <div className="card-grid library-grid">{filtered.map((course) => <CourseCard key={course.id} course={course} onOpen={() => onCourse(course)} onMock={() => onMock(course)} favorite={favorites.some((favorite) => favorite.id === course.id)} onFavorite={() => onFavorite(course)}/>)}</div>
+      {filtered.length === 0 && <EmptyState title={query.trim() ? "No courses found" : "No courses available"} text={query.trim() ? "Try a different course code or title." : "Courses will appear here when they are available."}/>}
+    </>}
   </div>;
 }
 
@@ -385,10 +389,10 @@ function Summary({ course, onBack, onMock }: { course: Course; onBack: () => voi
 function Contact() { return <div><PageHeading eyebrow="WE’RE HERE TO HELP" title="Contact us" text="Share a question, report a problem, or just say hello."/><div className="contact-card"><div className="contact-art"><span><Icon name="phone"/></span><div className="contact-orbit orbit-one"/><div className="contact-orbit orbit-two"/></div><div><div className="eyebrow">REACH OUT ANYTIME</div><h2>Let’s make your study space better.</h2><p>Found something that doesn’t work as expected, or have an idea to share? Our team is here to help you keep moving.</p><div className="contact-actions"><a className="email-button" href="mailto:nounstudyhub@gmail.com"><span>✉</span> Email us · nounstudyhub@gmail.com <Icon name="arrow"/></a><a className="whatsapp-button" href="https://wa.me/2347084868791" target="_blank" rel="noreferrer"><span>◉</span> WhatsApp us · +234-7084868791 <Icon name="arrow"/></a><a className="email-button" href="tel:+2347084868791"><span>☏</span> Call us · +234-7084868791 <Icon name="arrow"/></a></div><small className="contact-note">Email: nounstudyhub@gmail.com · WhatsApp &amp; calls: +234-7084868791. We typically reply within one business day.</small></div></div></div>; }
 function EmptyState({ title, text }: { title: string; text: string }) { return <div className="empty-state"><span><Icon name="search"/></span><h3>{title}</h3><p>{text}</p></div>; }
 
-function GuestCourses({ courses, onLogin, onSignup, onOpenCourse }: { courses: Course[]; onLogin: () => void; onSignup: () => void; onOpenCourse: (course: Course) => void }) {
+function GuestCourses({ courses, onLogin, onSignup, onOpenCourse, coursesLoading, coursesError }: { courses: Course[]; onLogin: () => void; onSignup: () => void; onOpenCourse: (course: Course) => void; coursesLoading: boolean; coursesError: string }) {
   return <div className="landing-page guest-courses">
     <nav className="public-nav container"><Logo/><div className="public-links"><a href="#features">Why NounStudyHub</a><a href="#how">How it works</a><a href="#contact">Contact</a></div><div className="nav-actions"><Button variant="ghost" onClick={onLogin}>Log in</Button><Button onClick={onSignup}>Create account <Icon name="arrow"/></Button></div></nav>
-    <main className="container"><div className="guest-courses-banner"><div className="eyebrow">EXPLORE COURSES</div><h2>Browse every course on NounStudyHub.</h2><p>Preview the full library before you sign in. Sign up to start practising.</p></div><CourseLibrary courses={courses} onCourse={onOpenCourse} onMock={onSignup} favorites={[]} onFavorite={onSignup}/></main>
+    <main className="container"><div className="guest-courses-banner"><div className="eyebrow">EXPLORE COURSES</div><h2>Browse every course on NounStudyHub.</h2><p>Preview the full library before you sign in. Sign up to start practising.</p></div><CourseLibrary courses={courses} onCourse={onOpenCourse} onMock={onSignup} favorites={[]} onFavorite={onSignup} loading={coursesLoading} error={coursesError}/></main>
   </div>;
 }
 
@@ -397,11 +401,23 @@ export default function HomePage() {
   const [mockBankYear, setMockBankYear] = useState<number | null>(null);
   const [mockDurationMinutes, setMockDurationMinutes] = useState(20);
   const [appError, setAppError] = useState("");
-  const [view, setView] = useState<AppView>("landing"); const [authMode, setAuthMode] = useState<"login" | "signup">("login"); const [user, setUser] = useState<User | null>(null); const [courses, setCourses] = useState<Course[]>(sampleCourses); const [favorites, setFavorites] = useState<Course[]>([]); const [selectedCourse, setSelectedCourse] = useState<Course>(sampleCourses[0]); const [mockQuestions, setMockQuestions] = useState<MockQuestion[]>([]); const [mockAttemptId, setMockAttemptId] = useState("demo"); const [mockResult, setMockResult] = useState<{ totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number } | null>(null); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<AppView>("landing"); const [authMode, setAuthMode] = useState<"login" | "signup">("login"); const [user, setUser] = useState<User | null>(null); const [courses, setCourses] = useState<Course[]>([]); const [coursesLoading, setCoursesLoading] = useState(true); const [coursesError, setCoursesError] = useState(""); const [favorites, setFavorites] = useState<Course[]>([]); const [selectedCourse, setSelectedCourse] = useState<Course>(sampleCourses[0]); const [mockQuestions, setMockQuestions] = useState<MockQuestion[]>([]); const [mockAttemptId, setMockAttemptId] = useState("demo"); const [mockResult, setMockResult] = useState<{ totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number } | null>(null); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [loading, setLoading] = useState(false);
   useEffect(() => { requestJson<{ user: User | null }>("/api/auth/me").then((data) => { if (data.user) { setUser(data.user); setView("dashboard"); } }).catch(() => undefined); }, []);
   useEffect(() => {
-    requestJson<{ courses: Course[] }>("/api/courses").then((data) => { setCourses(Array.isArray(data.courses) ? data.courses : []); if (user) setFavorites(data.courses.filter((course) => course.favorite)); }).catch(() => undefined);
+    requestJson<{ courses: Course[] }>("/api/courses")
+      .then((data) => {
+        const loadedCourses = Array.isArray(data.courses) ? data.courses : [];
+        setCourses(loadedCourses);
+        setFavorites((current) => current.length ? current : loadedCourses.filter((course) => course.favorite));
+      })
+      .catch((error: Error) => setCoursesError(error.message))
+      .finally(() => setCoursesLoading(false));
+  }, []);
+  useEffect(() => {
     if (!user) return;
+    requestJson<{ courses: Course[] }>("/api/courses")
+      .then((data) => setFavorites(data.courses.filter((course) => course.favorite)))
+      .catch(() => undefined);
     const refreshNotifications = () => requestJson<{ notifications: NotificationItem[] }>("/api/notifications").then((data) => setNotifications(data.notifications)).catch(() => undefined);
     refreshNotifications();
     const interval = window.setInterval(refreshNotifications, 10000);
@@ -486,11 +502,11 @@ export default function HomePage() {
   }
   function onAuthSuccess(nextUser: User) { setUser(nextUser); setFavorites([]); setView("dashboard"); }
   if (!user && (view === "login" || view === "signup")) return <AuthScreen mode={authMode} setMode={setAuthMode} onSuccess={onAuthSuccess} onBackHome={() => setView("landing")}/>;
-  if (!user && view === "courses") return <GuestCourses courses={courses} onLogin={() => goAuth("login")} onSignup={() => goAuth("signup")} onOpenCourse={(course) => { setSelectedCourse(course); goAuth("signup"); }}/ >;
+  if (!user && view === "courses") return <GuestCourses courses={courses} onLogin={() => goAuth("login")} onSignup={() => goAuth("signup")} onOpenCourse={(course) => { setSelectedCourse(course); goAuth("signup"); }} coursesLoading={coursesLoading} coursesError={coursesError}/ >;
   if (!user) return <Landing onLogin={() => goAuth("login")} onSignup={() => goAuth("signup")} onExplore={() => { setView("courses"); }}/ >;
   const aiCourses: AiCourse[] = courses.map(({ id, code, title }) => ({ id, code, title }));
   const body = view === "dashboard" ? <Dashboard user={user} onView={setView} onCourse={openCourse} onMock={(course) => startSetup(course)} onViewAll={() => setView("courses")} courses={courses} favorites={favorites} renderDatabase onAttempt={openAttemptResult}/>
-    : view === "courses" ? <CourseLibrary courses={courses} onCourse={openCourse} onMock={startSetup} favorites={favorites} onFavorite={toggleFavorite}/>
+    : view === "courses" ? <CourseLibrary courses={courses} onCourse={openCourse} onMock={startSetup} favorites={favorites} onFavorite={toggleFavorite} loading={coursesLoading} error={coursesError}/>
     : view === "saved" ? <SavedCourses favorites={favorites} onCourse={openCourse} onMock={startSetup} onFavorite={toggleFavorite} onBrowse={() => setView("courses")}/>
     : view === "course" ? user.role === "student" ? <StudentCourseContent key={selectedCourse.id} course={selectedCourse} onBack={() => setView("courses")} onMock={(year, count) => startSetup(selectedCourse, year ?? null, count ?? selectedCourse.questionCount)}/> : <CourseDetail course={selectedCourse} onBack={() => setView("courses")} onMock={() => startSetup(selectedCourse)} onSummary={() => setView("summary")} onAiChat={() => { setAssistantCourseId(selectedCourse.id); setView("ai-chat"); }} favorite={favorites.some((item) => item.id === selectedCourse.id)} onFavorite={() => toggleFavorite(selectedCourse)}/>
     : view === "setup" ? <Setup course={selectedCourse} onBack={() => setView("course")} onStart={startMock}/>
