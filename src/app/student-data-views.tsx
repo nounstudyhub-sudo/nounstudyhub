@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Course = { id: string; code: string; title: string; description: string; questionCount: number };
 type Attempt = { attempt: { id: string; totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; startedAt: string; timeUsed: number }; course: Course };
@@ -116,79 +116,79 @@ export function StudentCourseContent({ course, onMock, onBack }: { course: Cours
     }).catch(() => undefined);
   }
 
-  return <div className="course-content-page">
+  return <div className="course-content-page student-course-page">
     <button className="back-link" onClick={() => activeUnit ? setUnitId(null) : activeModule ? setModuleId(null) : onBack()}>← {activeUnit ? "Back to units" : activeModule ? "Back to modules" : "Back to courses"}</button>
-    <header className="course-content-heading"><span className="course-code">{course.code}</span><h1>{course.title}</h1><p>{course.description}</p><div className="course-content-actions"><span>{data?.modules.length ?? "—"} modules</span><span>{data?.course.questionCount ?? course.questionCount} questions</span><button className="button" onClick={() => onMock()}>Start a mock <span aria-hidden="true">→</span></button></div></header>
+    <header className="course-hero">
+      <div className="course-hero-icon">{course.code.slice(0, 1)}</div>
+      <div>
+        <span className="course-code">{course.code}</span>
+        <h1>{course.title}</h1>
+        <p>{course.description}</p>
+        <div className="course-detail-meta">
+          <span>{data?.course.questionCount ?? course.questionCount} questions available</span>
+          <span>{data?.modules.length ?? "—"} learning modules</span>
+          <span>Past-question practice</span>
+        </div>
+      </div>
+    </header>
     {error && <p className="form-error" role="alert">{error}</p>}
-    {data && !activeModule && <>
-      <section className="course-content-section"><div className="section-row"><div><h2>Course modules</h2><p>Choose a module to view its units.</p></div></div><div className="database-module-list">{data.modules.map((module, index) => <button className="database-module-row" key={module.id} onClick={() => { setModuleId(module.id); void track(module.id); }}><span>{index + 1}.</span><strong>{module.title}</strong><small>{module.units.length} units</small><span aria-hidden="true">›</span></button>)}{!data.modules.length && <div className="empty-state"><h3>No modules available</h3><p>Course materials will appear here when they are added.</p></div>}</div></section>
-      <section className="course-content-section"><div className="section-row"><div><h2>Question banks</h2><p>Choose a year to practise questions from that bank.</p></div></div><div className="database-bank-list">{data.banks.map((bank) => <button key={bank.id} disabled={!bank.questionCount} onClick={() => onMock(bank.year, bank.questionCount)}><strong>{bank.year}</strong><span>{bank.questionCount} questions</span><span aria-hidden="true">→</span></button>)}{!data.banks.length && <p className="small-note">No past-question banks are available for this course yet.</p>}</div></section>
-    </>}
-    {activeModule && !activeUnit && <section className="course-content-section"><div className="section-row"><div><h2>{activeModule.title}</h2><p>{activeModule.units.length} units</p></div></div><div className="database-unit-list">{activeModule.units.map((unit, index) => <button key={unit.id} onClick={() => { setUnitId(unit.id); void track(activeModule.id, unit.id); }}><span>{index + 1}.</span><strong>{unit.title}</strong><span aria-hidden="true">›</span></button>)}{!activeModule.units.length && <div className="empty-state"><h3>No units available</h3><p>Study units will appear here when they are added.</p></div>}</div></section>}
-    {activeUnit && <article className="database-unit-content"><div className="eyebrow">{activeModule?.title}</div><h2>{activeUnit.title}</h2><div>{activeUnit.content}</div></article>}
-    {!data && !error && <div className="loading-state"><span className="loader"/> Loading course content…</div>}
+    <div className={`course-detail-grid ${activeModule ? "student-course-detail-active" : ""}`}>
+      <main className="detail-main">
+        <section className="course-content-section">
+          <div className="section-row">
+            <div>
+              <h2>{activeUnit?.title ?? activeModule?.title ?? "Course modules"}</h2>
+              <p>{activeUnit ? activeModule?.title : activeModule ? `${activeModule.units.length} units` : "Build understanding one module at a time."}</p>
+            </div>
+          </div>
+          {!data && !error && <div className="course-empty-state" role="status">Loading course content…</div>}
+          {data && !activeModule && <div className="module-list">
+            {data.modules.map((module, index) => <button type="button" className="module-row student-module-row" key={module.id} onClick={() => { setModuleId(module.id); void track(module.id); }}>
+              <span className="module-number">{String(index + 1).padStart(2, "0")}</span>
+              <div><strong>{module.title}</strong><small>{module.units.length} units</small></div>
+              <span className="module-status">View module</span>
+              <span className="icon" aria-hidden="true">›</span>
+            </button>)}
+            {!data.modules.length && <div className="empty-state"><h3>No modules available</h3><p>Course materials will appear here when they are added.</p></div>}
+          </div>}
+          {activeModule && !activeUnit && <div className="module-list">
+            {activeModule.units.map((unit, index) => <button type="button" className="module-row student-module-row" key={unit.id} onClick={() => { setUnitId(unit.id); void track(activeModule.id, unit.id); }}>
+              <span className="module-number">{String(index + 1).padStart(2, "0")}</span>
+              <div><strong>{unit.title}</strong><small>Study unit</small></div>
+              <span className="module-status">View unit</span>
+              <span className="icon" aria-hidden="true">›</span>
+            </button>)}
+            {!activeModule.units.length && <div className="empty-state"><h3>No units available</h3><p>Study units will appear here when they are added.</p></div>}
+          </div>}
+          {activeUnit && <article className="database-unit-content"><div className="eyebrow">{activeModule?.title}</div><h2>{activeUnit.title}</h2><div>{activeUnit.content}</div></article>}
+        </section>
+        {!activeModule && !activeUnit && <div className="detail-action-band">
+          <div><span className="eyebrow">READY TO TEST YOURSELF?</span><h3>Put your learning into practice.</h3></div>
+          <button className="button" onClick={() => onMock()}>Attempt a mock <span aria-hidden="true">→</span></button>
+        </div>}
+      </main>
+      {!activeModule && !activeUnit && <aside className="detail-side">
+        <section className="side-card">
+          <div className="side-card-title"><strong>Question banks</strong><span>{data?.banks.length ?? "—"} years</span></div>
+          {!data && !error && <p className="small-note">Loading question banks…</p>}
+          {data?.banks.map((bank) => <button type="button" className="year-row student-year-row" key={bank.id} disabled={!bank.questionCount} onClick={() => onMock(bank.year, bank.questionCount)}>
+            <span>{bank.year}</span><small>{bank.questionCount} questions</small><span className="icon" aria-hidden="true">→</span>
+          </button>)}
+          {data && !data.banks.length && <p className="small-note">No past-question banks are available for this course yet.</p>}
+        </section>
+        <section className="side-card green-side">
+          <span className="icon" aria-hidden="true">✦</span>
+          <strong>Study smarter</strong>
+          <p>Try a short mock to practise what you have learned.</p>
+          <button type="button" onClick={() => onMock()}>Set up a mock <span aria-hidden="true">→</span></button>
+        </section>
+      </aside>}
+    </div>
   </div>;
 }
 
 type CourseRequest = { id: string; requestText: string; courseCode?: string; courseTitle?: string; status: string; createdAt: string };
 type CourseMatch = { id: string; code: string; title: string };
-
-function nationalPhoneDigits(phoneNumber: string | null) {
-  const digits = (phoneNumber ?? "").replace(/^\+?234-?/, "").replace(/\D/g, "");
-  const national = digits.length === 11 && digits.startsWith("0") ? digits.slice(1) : digits;
-  return national.slice(0, 10);
-}
-
-export function PhoneNumberField({ phoneNumber, onSave, onSaved }: { phoneNumber: string | null; onSave: (phone: string) => Promise<void>; onSaved?: () => void }) {
-  const [phone, setPhone] = useState(() => nationalPhoneDigits(phoneNumber));
-  const [isEditingPhone, setIsEditingPhone] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isEditingPhone) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [isEditingPhone]);
-
-  const displayedPhone = isEditingPhone ? phone : nationalPhoneDigits(phoneNumber);
-
-  async function save(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!/^\d{10}$/.test(phone)) {
-      setError("Enter exactly 10 digits.");
-      setSaved(false);
-      return;
-    }
-    setSaving(true);
-    setError("");
-    try {
-      const fullPhone = phone ? `+234-${phone.replace(/\D/g, "")}` : "";
-      await onSave(fullPhone);
-      setIsEditingPhone(false);
-      setSaved(true);
-      onSaved?.();
-    } catch (saveError) {
-      setSaved(false);
-      setError(saveError instanceof Error ? saveError.message : "Could not save phone number.");
-    } finally { setSaving(false); }
-  }
-
-  return <div className="phone-number-field">
-    <form className="phone-number-form" onSubmit={(event) => void save(event)}>
-      <div className="phone-number-control">
-        <span className="phone-number-prefix" aria-hidden="true">+234-</span>
-        <input ref={inputRef} aria-label="Phone number" type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} pattern="[0-9]{10}" required disabled={!isEditingPhone || saving} value={displayedPhone} onChange={(event) => { setPhone(event.target.value.replace(/\D/g, "").slice(0, 10)); setSaved(false); setError(""); }} placeholder="9014008284" />
-        <button className="phone-number-action" type={isEditingPhone ? "submit" : "button"} disabled={saving} onClick={() => { if (!isEditingPhone) { setPhone(nationalPhoneDigits(phoneNumber)); setIsEditingPhone(true); setSaved(false); setError(""); } }}>{saving ? "Saving…" : isEditingPhone ? "Save" : "Edit"}</button>
-      </div>
-    </form>
-    {saved && <span className="phone-number-feedback" role="status">Phone number updated.</span>}
-    {error && <span className="phone-number-feedback error" role="alert">{error}</span>}
-  </div>;
-}
 
 type ProfileIconName = "user" | "id" | "calendar" | "phone" | "lock" | "clock" | "check" | "bell" | "chevron";
 
@@ -297,11 +297,16 @@ export function StudentRequests({ onBack }: { onBack: () => void }) {
 }
 
 export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
-  user: { username: string; matriculationNumber: string; phoneNumber: string | null; createdAt: string; isActive: boolean; role: string };
+  user: { username: string; matriculationNumber: string; phoneNumber: string | null; createdAt: string; isActive: boolean };
   onSave: (phone: string) => Promise<void>;
   onDelete: () => void;
   onViewActivity: () => void;
 }) {
+  const [phone, setPhone] = useState(user.phoneNumber ?? "");
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [editingPhone, setEditingPhone] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [passwordError, setPasswordError] = useState("");
@@ -316,7 +321,27 @@ export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
   const sessionStartedAt = new Date();
   const createdAt = new Date(user.createdAt);
   const accountCreated = `${createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}, ${createdAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
-  const accountType = user.role === "admin" ? "Admin account" : "Student account";
+
+  async function save() {
+    const trimmedPhone = phone.trim();
+    const digits = trimmedPhone.replace(/\D/g, "");
+    if (trimmedPhone && (!/^\+?[0-9().\s-]+$/.test(trimmedPhone) || digits.length < 7 || digits.length > 15)) {
+      setError("Enter a valid phone number with 7 to 15 digits.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(trimmedPhone);
+      setPhone(trimmedPhone);
+      setSaved(true);
+      setProfileUpdatedAt(new Date());
+      setEditingPhone(false);
+    } catch (saveError) {
+      setSaved(false);
+      setError(saveError instanceof Error ? saveError.message : "Could not save profile.");
+    } finally { setSaving(false); }
+  }
 
   async function changePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -360,7 +385,7 @@ export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
     <div className="student-profile-grid">
       <section className="student-profile-panel student-account-panel" aria-labelledby="student-account-heading">
         <div className="student-account-banner">
-          <div className="student-account-identity"><span className="student-account-initial">{user.username.slice(0, 1).toUpperCase()}</span><span><strong>{user.username}</strong><small>{accountType}</small></span></div>
+          <div className="student-account-identity"><span className="student-account-initial">{user.username.slice(0, 1).toUpperCase()}</span><span><strong>{user.username}</strong><small>Student account</small></span></div>
           <span className={`student-active-pill ${user.isActive ? "" : "inactive"}`}><i/>{user.isActive ? "Active" : "Inactive"}</span>
         </div>
         <h2 className="student-profile-section-title" id="student-account-heading">Account details</h2>
@@ -368,8 +393,9 @@ export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
           <div className="student-account-row"><div className="student-account-label"><ProfileIcon name="user"/><span>Username</span></div><strong>{user.username}</strong></div>
           <div className="student-account-row student-matric-row"><div className="student-account-label"><ProfileIcon name="id"/><span>Matriculation number</span></div><span className="student-account-value">{user.matriculationNumber}</span><small>One account per matriculation number</small></div>
           <div className="student-account-row"><div className="student-account-label"><ProfileIcon name="calendar"/><span>Date joined</span></div><strong>{createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</strong></div>
-          <div className="student-account-row student-phone-row"><div className="student-account-label"><ProfileIcon name="phone"/><span>Phone number <small>Optional</small></span></div><PhoneNumberField phoneNumber={user.phoneNumber} onSave={onSave} onSaved={() => setProfileUpdatedAt(new Date())}/></div>
+          <div className="student-account-row student-phone-row"><div className="student-account-label"><ProfileIcon name="phone"/><span>Phone number <small>Optional</small></span></div><form className="student-phone-inline-form" onSubmit={(event) => { event.preventDefault(); void save(); }}>{editingPhone ? <input aria-label="Phone number" type="tel" autoComplete="tel" value={phone} onChange={(event) => { setPhone(event.target.value); setSaved(false); setError(""); }} placeholder="Add a phone number"/> : <strong>{phone || "+ Add phone number"}</strong>}<button type={editingPhone ? "submit" : "button"} className="student-add-phone" disabled={saving} onClick={() => { if (!editingPhone) { setPhone(user.phoneNumber ?? ""); setEditingPhone(true); setError(""); } }}>{saving ? "Saving…" : editingPhone ? "Save" : "Edit"}</button></form></div>
         </div>
+        {(saved || error) && <div className="student-profile-feedback">{saved && <span role="status">Phone number updated.</span>}{error && <span role="alert">{error}</span>}</div>}
         {passwordSaved && <div className="student-profile-feedback" role="status">Password updated successfully.</div>}
       </section>
 
@@ -382,7 +408,7 @@ export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
         </section>
         <section className="student-profile-panel student-status-panel">
           <div><h2>Account status</h2><span className={`student-active-pill ${user.isActive ? "" : "inactive"}`}><i/>{user.isActive ? "Active" : "Inactive"}</span></div>
-          <p>{user.isActive ? `You have access to all ${accountType.toLowerCase().replace(" account", "")} features on NounStudyHub.` : "Your account access is currently inactive."}</p>
+          <p>{user.isActive ? "You have access to all student features on NounStudyHub." : "Your account access is currently inactive."}</p>
         </section>
       </div>
 
