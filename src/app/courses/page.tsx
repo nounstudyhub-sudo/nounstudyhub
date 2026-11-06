@@ -42,7 +42,7 @@ export default function CoursesPage() {
   const filteredCourses = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
     return courses
-      .filter((course) => `${course.code} ${course.title}`.toLocaleLowerCase().includes(normalizedQuery))
+      .filter((course) => `${course.code} ${course.title} ${course.description}`.toLocaleLowerCase().includes(normalizedQuery))
       .sort((first, second) => first.title.localeCompare(second.title, undefined, { sensitivity: "base" }));
   }, [courses, query]);
 
@@ -53,16 +53,25 @@ export default function CoursesPage() {
           <span className="brand-mark">N</span>
           <span>NounStudyHub</span>
         </Link>
+        <div className="public-links">
+          <Link href="/#features">Why NounStudyHub</Link>
+          <Link href="/#how">How it works</Link>
+          <Link href="/#contact">Contact</Link>
+        </div>
         <div className="nav-actions">
-          <Link className="button button-ghost" href="/">Home</Link>
+          <Link className="button button-ghost" href="/login">Log in</Link>
+          <Link className="button" href="/signup">Create account <span aria-hidden="true">→</span></Link>
         </div>
       </nav>
 
       <main className="container">
+        <Link className="courses-back-link" href="/">
+          <span aria-hidden="true">←</span> Back to home
+        </Link>
         <div className="guest-courses-banner">
           <div className="eyebrow">EXPLORE COURSES</div>
           <h2>Browse every course on NounStudyHub.</h2>
-          <p>Preview the full library before you sign in. Sign up to start practising.</p>
+          <p>Preview the full library before you sign in. Create an account to start practising.</p>
         </div>
 
         <div className="library-toolbar">
@@ -79,7 +88,19 @@ export default function CoursesPage() {
         </div>
 
         {loading ? (
-          <div className="loading-state" role="status"><span className="loader" /> Loading courses…</div>
+          <div className="course-loading" role="status">
+            <p><span className="loader" /> Loading courses…</p>
+            <div className="card-grid library-grid course-skeleton-grid" aria-hidden="true">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div className="course-skeleton" key={index}>
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              ))}
+            </div>
+          </div>
         ) : error ? (
           <p className="form-error" role="alert">{error}</p>
         ) : filteredCourses.length ? (
@@ -99,8 +120,8 @@ export default function CoursesPage() {
                   <span>{course.moduleCount} modules</span>
                 </div>
                 <div className="course-card-actions">
-                  <Link className="button button-secondary" href={`/courses/${encodeURIComponent(course.id)}`}>
-                    View course <span aria-hidden="true">→</span>
+                  <Link className="button button-secondary" href="/signup">
+                    View Course <span aria-hidden="true">→</span>
                   </Link>
                 </div>
               </article>

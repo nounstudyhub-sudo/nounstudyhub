@@ -13,7 +13,7 @@ export async function GET(request: Request) {
       { code: { $regex: escapeRegex(query), $options: "i" } },
       { title: { $regex: escapeRegex(query), $options: "i" } },
     ] } : {};
-    const rows = await Course.find(filter).sort({ code: 1 }).lean();
+    const rows = await Course.find(query ? filter : {}).sort({ title: 1, code: 1 }).lean();
     const user = await getCurrentUser();
     const saved = user ? await Favorite.find({ userId: user.id }).select("courseId").lean() : [];
     const savedIds = new Set(saved.map((row) => idString(row.courseId)));
@@ -31,7 +31,6 @@ export async function GET(request: Request) {
     }));
     return Response.json({ courses });
   } catch (error) {
-    const missingUri = error instanceof Error && error.message.includes("MONGODB_URI");
     console.error(`[courses] MongoDB query failed (${error instanceof Error ? error.name : "unknown error"}).`);
     return Response.json({
       courses: [],

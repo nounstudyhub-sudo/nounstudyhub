@@ -99,7 +99,17 @@ function LegacyAuthScreen({ mode, setMode, onSuccess, onBackHome }: { mode: "log
   async function submit(e: FormEvent) { e.preventDefault(); setError(""); if (mode === "signup" && password !== confirmPassword) { setError("Passwords do not match."); return; } if (isRecovery && newPassword.length < 8) { setError("New password must be at least 8 characters."); return; } if (isRecovery && newPassword !== confirmPassword) { setError("Passwords do not match."); return; } setLoading(true); try { const data = isRecovery ? await requestJson<{ user: User }>("/api/auth/recover", { method: "POST", body: JSON.stringify({ username, matriculationNumber, newPassword, confirmPassword }) }) : await requestJson<{ user: User }>(`/api/auth/${mode === "login" ? "login" : "register"}`, { method: "POST", body: JSON.stringify({ username, password, matriculationNumber }) }); onSuccess(data.user); } catch (e) { setError(e instanceof Error ? e.message : "Unable to continue."); } finally { setLoading(false); } }
   return <div className="auth-page"><div className="auth-visual"><div className="auth-visual-top"><Logo dark/><span>Student learning space</span></div><div className="auth-visual-copy"><div className="eyebrow">FOCUS ON THE NEXT STEP</div><h1>Make every study hour count.</h1><p>Summaries, past questions and progress — organised around the courses you care about.</p></div><div className="auth-quote"><span>“</span><p>NounStudyHub makes revision feel less overwhelming. I finally know what to study next.</p><small>— A focused NOUN student</small></div><div className="auth-visual-footer"><span>01 / 03</span><div><i/><i/><i/></div></div></div><div className="auth-form-side"><button className="back-button" onClick={onBackHome}><Icon name="arrow"/> Back to home</button><div className="auth-form-wrap"><div className="auth-mobile-logo"><Logo/></div>{isRecovery ? <><div className="auth-kicker">ACCOUNT RECOVERY</div><h2>Reset your password.</h2><p className="auth-sub">Use your username and matriculation number to get back in.</p></> : <><div className="auth-kicker">{mode === "login" ? "WELCOME BACK" : "GET STARTED"}</div><h2>{mode === "login" ? "Welcome back." : "Create your account."}</h2><p className="auth-sub">{mode === "login" ? "Your next focused session is waiting." : "Join thousands of students studying with purpose."}</p></>}
     <form onSubmit={submit} className="auth-form"><label>Username<input autoComplete="username" value={username} onChange={(e) => { setUsername(e.target.value); setAvailable(null); }} placeholder="e.g. Khalifa" required/>{mode === "signup" && username.length >= 3 && <span className={`availability ${available ? "yes" : "no"}`}>{available ? "✓ Username available" : "× Username already taken"}</span>}</label>{mode === "signup" && <><label>Password<input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" required/><span className="password-rule">Use at least 8 characters</span></label><label>Confirm password<input type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter your password" required/>{password && confirmPassword && <span className={`availability ${password === confirmPassword ? "yes" : "no"}`}>{password === confirmPassword ? "✓ Passwords match" : "× Passwords do not match"}</span>}</label><label>Matriculation number<input value={matriculationNumber} onChange={(e) => setMatriculationNumber(e.target.value)} placeholder="e.g. Nou123456789" required/></label></>}{mode === "login" && <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" required/></label>}{isRecovery && <><label>Matriculation number<input value={matriculationNumber} onChange={(e) => setMatriculationNumber(e.target.value)} placeholder="e.g. Nou123456789" required/></label><label>New password<input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="At least 8 characters" required/><span className="password-rule">Use at least 8 characters</span></label><label>Confirm new password<input type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter your new password" required/>{newPassword && confirmPassword && <span className={`availability ${newPassword === confirmPassword ? "yes" : "no"}`}>{newPassword === confirmPassword ? "✓ Passwords match" : "× Passwords do not match"}</span>}</label></>}{error && <div className="form-error"><Icon name="close"/> {error}</div>}<Button type="submit" className="full-button" disabled={loading}>{loading ? "Please wait…" : isRecovery ? "Reset password" : mode === "login" ? "Log in to NounStudyHub" : "Create my account"}<Icon name="arrow"/></Button></form>
-    <div className="auth-switch">{mode === "login" && !isRecovery && <button onClick={() => setRecovery(true)}>Forgot password?</button>}<p>{isRecovery ? "Remembered your password?" : mode === "login" ? "New to NounStudyHub?" : "Already have an account?"} <button onClick={() => { setRecovery(false); setMode(mode === "login" ? "signup" : "login"); }}>{isRecovery ? "Log in" : mode === "login" ? "Create an account" : "Log in"}</button></p></div></div><div className="auth-help">By continuing, you agree to our <a href="/terms">Terms of use</a> and <a href="/privacy">Privacy policy</a>.</div></div></div>;
+    <div className="auth-switch">
+      {mode === "login" && !isRecovery && <button onClick={() => setRecovery(true)}>Forgot password?</button>}
+      <p>
+        {isRecovery ? "Remembered your password?" : mode === "login" ? "New to NounStudyHub?" : "Already have an account?"}{" "}
+        {isRecovery ? (
+          <button onClick={() => { setRecovery(false); setMode("login"); }}>Log in</button>
+        ) : (
+          <Link href={mode === "login" ? "/signup" : "/login"}>{mode === "login" ? "Create an account" : "Log in"}</Link>
+        )}
+      </p>
+    </div></div><div className="auth-help">By continuing, you agree to our <a href="/terms">Terms of use</a> and <a href="/privacy">Privacy policy</a>.</div></div></div>;
 }
 
 type AuthScreenProps = { mode: "login" | "signup"; setMode: (mode: "login" | "signup") => void; onSuccess: (user: User) => void; onBackHome: () => void };
@@ -182,7 +192,14 @@ function LoginRecoveryScreen({ setMode, onSuccess, onBackHome }: AuthScreenProps
         <div className="auth-switch">
           {!recoveryStep && <button onClick={() => { setError(""); setRecoveryStep("verify"); }}>Forgot password?</button>}
           {recoveryStep === "password" && <button onClick={() => { setError(""); setRecoveryStep("verify"); }}>Change username or matric number</button>}
-          <p>{recoveryStep ? "Remembered your password?" : "New to NounStudyHub?"} <button onClick={() => { setRecoveryStep(null); setMode("signup"); }}>{recoveryStep ? "Log in" : "Create an account"}</button></p>
+          <p>
+            {recoveryStep ? "Remembered your password?" : "New to NounStudyHub?"}{" "}
+            {recoveryStep ? (
+              <button onClick={() => setRecoveryStep(null)}>Log in</button>
+            ) : (
+              <Link href="/signup">Create an account</Link>
+            )}
+          </p>
         </div>
       </div>
       <div className="auth-help">By continuing, you agree to our <a href="/terms">Terms of use</a> and <a href="/privacy">Privacy policy</a>.</div>
@@ -396,12 +413,12 @@ function GuestCourses({ courses, onLogin, onSignup, onOpenCourse, coursesLoading
   </div>;
 }
 
-export default function HomePage() {
+export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login" | "signup" } = {}) {
   const [assistantCourseId, setAssistantCourseId] = useState("");
   const [mockBankYear, setMockBankYear] = useState<number | null>(null);
   const [mockDurationMinutes, setMockDurationMinutes] = useState(20);
   const [appError, setAppError] = useState("");
-  const [view, setView] = useState<AppView>("landing"); const [authMode, setAuthMode] = useState<"login" | "signup">("login"); const [user, setUser] = useState<User | null>(null); const [courses, setCourses] = useState<Course[]>([]); const [coursesLoading, setCoursesLoading] = useState(true); const [coursesError, setCoursesError] = useState(""); const [favorites, setFavorites] = useState<Course[]>([]); const [selectedCourse, setSelectedCourse] = useState<Course>(sampleCourses[0]); const [mockQuestions, setMockQuestions] = useState<MockQuestion[]>([]); const [mockAttemptId, setMockAttemptId] = useState("demo"); const [mockResult, setMockResult] = useState<{ totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number } | null>(null); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<AppView>(initialAuthMode ?? "landing"); const [authMode, setAuthMode] = useState<"login" | "signup">(initialAuthMode ?? "login"); const [user, setUser] = useState<User | null>(null); const [courses, setCourses] = useState<Course[]>([]); const [coursesLoading, setCoursesLoading] = useState(true); const [coursesError, setCoursesError] = useState(""); const [favorites, setFavorites] = useState<Course[]>([]); const [selectedCourse, setSelectedCourse] = useState<Course>(sampleCourses[0]); const [mockQuestions, setMockQuestions] = useState<MockQuestion[]>([]); const [mockAttemptId, setMockAttemptId] = useState("demo"); const [mockResult, setMockResult] = useState<{ totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number } | null>(null); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [loading, setLoading] = useState(false);
   useEffect(() => { requestJson<{ user: User | null }>("/api/auth/me").then((data) => { if (data.user) { setUser(data.user); setView("dashboard"); } }).catch(() => undefined); }, []);
   useEffect(() => {
     requestJson<{ courses: Course[] }>("/api/courses")
@@ -500,8 +517,8 @@ export default function HomePage() {
       setFavorites((current) => result.favorite ? current.some((item) => item.id === course.id) ? current : [...current, course] : current.filter((item) => item.id !== course.id));
     } catch (error) { setAppError(error instanceof Error ? error.message : "Could not update saved course."); }
   }
-  function onAuthSuccess(nextUser: User) { setUser(nextUser); setFavorites([]); setView("dashboard"); }
-  if (!user && (view === "login" || view === "signup")) return <AuthScreen mode={authMode} setMode={setAuthMode} onSuccess={onAuthSuccess} onBackHome={() => setView("landing")}/>;
+  function onAuthSuccess(nextUser: User) { setUser(nextUser); setFavorites([]); setView("dashboard"); if (initialAuthMode) window.history.replaceState(null, "", "/"); }
+  if (!user && (view === "login" || view === "signup")) return <AuthScreen mode={authMode} setMode={setAuthMode} onSuccess={onAuthSuccess} onBackHome={() => { setView("landing"); if (initialAuthMode) window.history.replaceState(null, "", "/"); }}/>;
   if (!user && view === "courses") return <GuestCourses courses={courses} onLogin={() => goAuth("login")} onSignup={() => goAuth("signup")} onOpenCourse={(course) => { setSelectedCourse(course); goAuth("signup"); }} coursesLoading={coursesLoading} coursesError={coursesError}/ >;
   if (!user) return <Landing onLogin={() => goAuth("login")} onSignup={() => goAuth("signup")} onExplore={() => { setView("courses"); }}/ >;
   const aiCourses: AiCourse[] = courses.map(({ id, code, title }) => ({ id, code, title }));
