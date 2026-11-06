@@ -11,7 +11,7 @@ export const QUESTION_CSV_HEADERS = [
 
 export type ImportedQuestion = {
   question: string;
-  questionType: "MCQ" | "FBQ";
+  questionType: "MCQ" | "FBQ" | "TF";
   optionA: string;
   optionB: string;
   optionC: string;
@@ -126,14 +126,14 @@ export function validateQuestionCsv(input: string): ParsedQuestionCsv {
     const [question, rawType, optionA, optionB, optionC, optionD, rawAnswer, explanation] =
       cells.map((value) => value.trim());
     const questionType = rawType.toUpperCase();
-    const correctAnswer = questionType === "MCQ" ? rawAnswer.toUpperCase() : rawAnswer;
+    const correctAnswer = questionType === "FBQ" ? rawAnswer : rawAnswer.toUpperCase();
 
     if (/^REVIEW REQUIRED\s*:/i.test(explanation)) {
       errors.push(`Row ${line}: ${explanation}`);
     } else if (!question) {
       errors.push(`Row ${line}: question is required.`);
-    } else if (questionType !== "MCQ" && questionType !== "FBQ") {
-      errors.push(`Row ${line}: questionType must be MCQ or FBQ.`);
+    } else if (questionType !== "MCQ" && questionType !== "FBQ" && questionType !== "TF") {
+      errors.push(`Row ${line}: questionType must be MCQ, FBQ or TF.`);
     } else if (!explanation) {
       errors.push(`Row ${line}: explanation is required.`);
     } else if (questionType === "MCQ" && (!optionA || !optionB || !optionC || !optionD)) {
@@ -141,7 +141,13 @@ export function validateQuestionCsv(input: string): ParsedQuestionCsv {
     } else if (questionType === "MCQ"
       && new Set([optionA, optionB, optionC, optionD].map((option) => option.toLocaleLowerCase())).size !== 4) {
       errors.push(`Row ${line}: MCQ options must be unique.`);
-    } else if (questionType === "MCQ" && !["A", "B", "C", "D"].includes(correctAnswer)) {
+    } else if (questionType === "TF"
+      && (optionA.toLowerCase() !== "true" || optionB.toLowerCase() !== "false" || optionC || optionD)) {
+      errors.push(`Row ${line}: TF questions require True and False in options A and B, with C and D empty.`);
+    } else if (questionType === "TF" && !["A", "B"].includes(correctAnswer)) {
+      errors.push(`Row ${line}: TF correctAnswer must be A or B.`);
+    } else if ((questionType === "MCQ" || questionType === "TF")
+      && !["A", "B", "C", "D"].includes(correctAnswer)) {
       errors.push(`Row ${line}: MCQ correctAnswer must be A, B, C or D.`);
     } else if (questionType === "FBQ" && !correctAnswer) {
       errors.push(`Row ${line}: FBQ correctAnswer must contain the missing word or phrase.`);

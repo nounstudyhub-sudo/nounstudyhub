@@ -20,8 +20,15 @@ const indexes = {
   summaries: [[{ moduleId: 1 }, { name: "summaries_module" }]],
   questionBanks: [[{ courseId: 1, year: 1 }, { unique: true, name: "question_banks_course_year_unique" }]],
   questions: [[{ courseId: 1 }, { name: "questions_course" }], [{ bankId: 1 }, { name: "questions_bank" }]],
-  mockAttempts: [[{ userId: 1, startedAt: -1 }, { name: "attempts_user_started" }], [{ courseId: 1 }, { name: "attempts_course" }]],
-  mockAnswers: [[{ attemptId: 1, position: 1 }, { unique: true, name: "answers_attempt_position_unique" }]],
+  mockAttempts: [
+    [{ userId: 1, startedAt: -1 }, { name: "attempts_user_started" }],
+    [{ courseId: 1 }, { name: "attempts_course" }],
+    [{ expiresAt: 1 }, { expireAfterSeconds: 0, name: "mock_attempt_expiry_ttl" }],
+  ],
+  mockAnswers: [
+    [{ attemptId: 1, position: 1 }, { unique: true, name: "answers_attempt_position_unique" }],
+    [{ expiresAt: 1 }, { expireAfterSeconds: 0, name: "mock_answer_expiry_ttl" }],
+  ],
   favorites: [[{ userId: 1, courseId: 1 }, { unique: true, name: "favorites_user_course_unique" }]],
   courseViews: [[{ userId: 1, courseId: 1 }, { unique: true, name: "views_user_course_unique" }]],
   studyProgress: [[{ userId: 1, courseId: 1 }, { unique: true, name: "study_progress_user_course_unique" }]],

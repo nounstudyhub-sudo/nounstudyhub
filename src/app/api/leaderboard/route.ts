@@ -9,17 +9,18 @@ export async function GET(request: Request) {
     const period = new URL(request.url).searchParams.get("period") ?? "all";
     const cutoff = period === "week" ? new Date(Date.now() - 7 * 86400000) : period === "month" ? new Date(Date.now() - 30 * 86400000) : null;
     const periodFilter = cutoff ? { startedAt: { $gte: cutoff } } : {};
-    const myCourseIds = await MockAttempt.distinct("courseId", { userId: user.id });
+    const pastQuestionFilter = { $or: [{ type: "PAST_QUESTION" }, { type: { $exists: false } }] };
+    const myCourseIds = await MockAttempt.distinct("courseId", { userId: user.id, submittedAt: { $ne: null }, ...pastQuestionFilter });
     const [candidateRows, myStatsRows] = await Promise.all([
       MockAttempt.aggregate([
-        { $match: { userId: { $ne: user._id }, submittedAt: { $ne: null }, ...periodFilter } },
+        { $match: { userId: { $ne: user._id }, submittedAt: { $ne: null }, ...pastQuestionFilter, ...periodFilter } },
         { $group: { _id: "$userId", average: { $avg: "$percentage" }, attempts: { $sum: 1 }, courses: { $addToSet: "$courseId" } } },
         { $match: { attempts: { $gte: 2 } } },
         { $addFields: { shared: { $size: { $setIntersection: ["$courses", myCourseIds] } } } },
         { $sort: { shared: -1, average: -1, attempts: -1 } },
       ]),
       MockAttempt.aggregate([
-        { $match: { userId: user._id, submittedAt: { $ne: null }, ...periodFilter } },
+        { $match: { userId: user._id, submittedAt: { $ne: null }, ...pastQuestionFilter, ...periodFilter } },
         { $group: { _id: null, average: { $avg: "$percentage" }, attempts: { $sum: 1 }, courses: { $addToSet: "$courseId" } } },
       ]),
     ]);

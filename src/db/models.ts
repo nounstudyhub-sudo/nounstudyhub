@@ -69,7 +69,7 @@ const QuestionSchema = new Schema({
   courseId: { type: objectId, ref: "Course", required: true, index: true },
   bankId: { type: objectId, ref: "QuestionBank", required: true, index: true },
   question: { type: String, required: true },
-  questionType: { type: String, required: true, enum: ["MCQ", "FBQ"], default: "MCQ" },
+  questionType: { type: String, required: true, enum: ["MCQ", "FBQ", "TF"], default: "MCQ" },
   optionA: { type: String, default: null },
   optionB: { type: String, default: null },
   optionC: { type: String, default: null },
@@ -82,25 +82,40 @@ const QuestionSchema = new Schema({
 const MockAttemptSchema = new Schema({
   userId: { type: objectId, ref: "User", required: true, index: true },
   courseId: { type: objectId, ref: "Course", required: true, index: true },
+  type: { type: String, enum: ["PAST_QUESTION", "AI_PRACTICE"], default: "PAST_QUESTION", required: true },
+  topic: { type: String, default: null },
   totalQuestions: { type: Number, required: true },
   correctAnswers: { type: Number, required: true, default: 0 },
   unanswered: { type: Number, required: true, default: 0 },
   percentage: { type: Number, required: true, default: 0 },
   timeLimit: { type: Number, required: true },
   timeUsed: { type: Number, required: true, default: 0 },
+  expiresAt: { type: Date, default: null },
   startedAt: { type: Date, required: true, default: Date.now },
   submittedAt: { type: Date, default: null },
 }, commonOptions);
+MockAttemptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, name: "mock_attempt_expiry_ttl" });
 
 const MockAnswerSchema = new Schema({
   attemptId: { type: objectId, ref: "MockAttempt", required: true },
-  questionId: { type: objectId, ref: "Question", required: true },
+  questionId: { type: objectId, ref: "Question", default: null },
   position: { type: Number, required: true },
-  questionType: { type: String, required: true, enum: ["MCQ", "FBQ"], default: "MCQ" },
+  questionType: { type: String, required: true, enum: ["MCQ", "FBQ", "TF"], default: "MCQ" },
   selectedAnswer: { type: String, default: null },
   correctAnswer: { type: String, required: true },
+  expiresAt: { type: Date, default: null },
+  questionSnapshot: {
+    question: { type: String },
+    questionType: { type: String, enum: ["MCQ", "FBQ", "TF"], default: "MCQ" },
+    optionA: { type: String, default: null },
+    optionB: { type: String, default: null },
+    optionC: { type: String, default: null },
+    optionD: { type: String, default: null },
+    explanation: { type: String, default: null },
+  },
 }, commonOptions);
 MockAnswerSchema.index({ attemptId: 1, position: 1 }, { unique: true, name: "answers_attempt_position_unique" });
+MockAnswerSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0, name: "mock_answer_expiry_ttl" });
 
 const FavoriteSchema = new Schema({
   userId: { type: objectId, ref: "User", required: true },

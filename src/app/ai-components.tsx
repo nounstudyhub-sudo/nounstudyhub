@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { stripMarkdownAsterisks } from "@/lib/ai-text";
 
 export type AiCourse = { id: string; code: string; title: string };
 type Message = { role: "user" | "assistant"; content: string };
@@ -27,7 +28,7 @@ export function AiExplainButton({ attemptId, questionId }: { attemptId: string; 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [explanation, setExplanation] = useState("");
-  const [authoritativeAnswer, setAuthoritativeAnswer] = useState<{ letter: string; text: string; questionType: "MCQ" | "FBQ" } | null>(null);
+  const [authoritativeAnswer, setAuthoritativeAnswer] = useState<{ letter: string; text: string; questionType: "MCQ" | "FBQ" | "TF" } | null>(null);
   const [studentAnswer, setStudentAnswer] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -38,8 +39,8 @@ export function AiExplainButton({ attemptId, questionId }: { attemptId: string; 
     setLoading(true);
     setError("");
     try {
-      const data = await requestAi<{ explanation: string; authoritativeAnswer: { letter: string; text: string; questionType: "MCQ" | "FBQ" }; studentAnswer: string | null; usage: Usage }>("/api/ai/explain", { attemptId, questionId });
-      setExplanation(data.explanation);
+      const data = await requestAi<{ explanation: string; authoritativeAnswer: { letter: string; text: string; questionType: "MCQ" | "FBQ" | "TF" }; studentAnswer: string | null; usage: Usage }>("/api/ai/explain", { attemptId, questionId });
+      setExplanation(stripMarkdownAsterisks(data.explanation));
       setAuthoritativeAnswer(data.authoritativeAnswer);
       setStudentAnswer(data.studentAnswer);
       setUsage(data.usage);
@@ -55,7 +56,7 @@ export function AiExplainButton({ attemptId, questionId }: { attemptId: string; 
       ✦ {explanation ? "AI explanation" : "Explain with AI"}
     </button>
     {open && <div className="ai-inline-panel" role="status">
-      {loading ? <p>Preparing an explanation from your saved answer…</p> : error ? <p className="ai-error">{error}</p> : <><div className="ai-answer-source"><strong>Official answer: {authoritativeAnswer?.questionType === "MCQ" ? `${authoritativeAnswer.letter}. ` : ""}{authoritativeAnswer?.text}</strong><span>Your answer: {studentAnswer ?? "Unanswered"}</span></div><p>{explanation}</p>{usage && <small>{usage.remaining} AI requests remaining today</small>}</>}
+      {loading ? <p>Preparing an explanation from your saved answer…</p> : error ? <p className="ai-error">{error}</p> : <><div className="ai-answer-source"><strong>Official answer: {authoritativeAnswer?.questionType !== "FBQ" ? `${authoritativeAnswer?.letter}. ` : ""}{authoritativeAnswer?.text}</strong><span>Your answer: {studentAnswer ?? "Unanswered"}</span></div><p>{explanation}</p>{usage && <small>{usage.remaining} AI requests remaining today</small>}</>}
     </div>}
   </div>;
 }
@@ -63,8 +64,8 @@ export function AiExplainButton({ attemptId, questionId }: { attemptId: string; 
 type SavedReview = {
   attempt: { id: string };
   answers: {
-    answer: { id: string; questionId: string; selectedAnswer: string | null; correctAnswer: string; questionType?: "MCQ" | "FBQ" };
-    question: { id: string; question: string; questionType?: "MCQ" | "FBQ"; optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null; explanation?: string | null };
+    answer: { id: string; questionId: string; selectedAnswer: string | null; correctAnswer: string; questionType?: "MCQ" | "FBQ" | "TF" };
+    question: { id: string; question: string; questionType?: "MCQ" | "FBQ" | "TF"; optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null; explanation?: string | null };
   }[];
 };
 
@@ -94,17 +95,21 @@ export function MockQuestionReview({ attemptId }: { attemptId: string }) {
 
   return <div className="review-list">{data.answers.map(({ answer, question }, index) => {
     const questionType = answer.questionType ?? question.questionType ?? "MCQ";
-    const isCorrect = questionType === "FBQ"
-      ? Boolean(answer.selectedAnswer?.trim()) && answer.selectedAnswer?.trim().toLowerCase() === answer.correctAnswer.trim().toLowerCase()
-      : answer.selectedAnswer === answer.correctAnswer;
     const options = { A: question.optionA, B: question.optionB, C: question.optionC, D: question.optionD };
-    const selectedText = questionType === "FBQ" ? answer.selectedAnswer : answer.selectedAnswer ? options[answer.selectedAnswer as keyof typeof options] : null;
-    const correctText = questionType === "FBQ" ? answer.correctAnswer : options[answer.correctAnswer as keyof typeof options];
+    const selectedText = questionType === "FBQ"
+      ? answer.selectedAnswer ? options[answer.selectedAnswer as keyof typeof options] ?? answer.selectedAnswer : null
+      : answer.selectedAnswer ? options[answer.selectedAnswer as keyof typeof options] : null;
+    const correctText = questionType === "FBQ"
+      ? options[answer.correctAnswer as keyof typeof options] ?? answer.correctAnswer
+      : options[answer.correctAnswer as keyof typeof options];
+    const isCorrect = questionType === "FBQ"
+      ? Boolean(selectedText?.trim()) && selectedText?.trim().toLowerCase() === correctText?.trim().toLowerCase()
+      : answer.selectedAnswer === answer.correctAnswer;
     return <article className={`review-card ${isCorrect ? "is-correct" : "is-wrong"}`} key={answer.id}>
       <div className="review-card-top"><span>QUESTION {String(index + 1).padStart(2, "0")} · {questionType}</span><strong>{isCorrect ? "Correct" : "Review this"}</strong></div>
       <h2>{question.question}</h2>
-      {questionType === "MCQ" && <div className="ai-question-options">{Object.entries(options).map(([letter, text]) => <p key={letter}><strong>{letter}.</strong> {text}</p>)}</div>}
-      <div className="review-answers"><div><small>Your answer</small><strong className={isCorrect ? "answer-good" : "answer-bad"}>{questionType === "MCQ" && answer.selectedAnswer ? `${answer.selectedAnswer}. ` : ""}{selectedText ?? "Unanswered"}</strong></div><div><small>Correct answer · database</small><strong className="answer-good">{questionType === "MCQ" ? `${answer.correctAnswer}. ` : ""}{correctText}</strong></div></div>
+      {questionType !== "FBQ" && <div className="ai-question-options">{Object.entries(options).filter(([, text]) => text).map(([letter, text]) => <p key={letter}><strong>{letter}.</strong> {text}</p>)}</div>}
+      <div className="review-answers"><div><small>Your answer</small><strong className={isCorrect ? "answer-good" : "answer-bad"}>{questionType !== "FBQ" && answer.selectedAnswer ? `${answer.selectedAnswer}. ` : ""}{selectedText ?? "Unanswered"}</strong></div><div><small>Correct answer · database</small><strong className="answer-good">{questionType !== "FBQ" ? `${answer.correctAnswer}. ` : ""}{correctText}</strong></div></div>
       {question.explanation && <div className="review-explanation"><span className="icon">✎</span><div><small>Stored explanation</small><p>{question.explanation}</p></div></div>}
       <AiExplainButton attemptId={attemptId} questionId={answer.questionId}/>
     </article>;
@@ -187,13 +192,26 @@ export function AiPerformanceAnalysis() {
   </section>;
 }
 
-export function AiPracticePanel({ courses }: { courses: AiCourse[] }) {
+export function AiPracticePanel({
+  courses,
+  onSubmitted,
+  onOpenReview,
+}: {
+  courses: AiCourse[];
+  onSubmitted: (attemptId: string, result: { totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number }, courseId: string) => void;
+  onOpenReview: () => void;
+}) {
   const [courseId, setCourseId] = useState("");
   const [topic, setTopic] = useState("");
-  const [count, setCount] = useState("5");
+  const [count, setCount] = useState("10");
   const [questions, setQuestions] = useState<PracticeQuestion[]>([]);
-  const [revealed, setRevealed] = useState<Record<number, boolean>>({});
+  const [attemptId, setAttemptId] = useState("");
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, PracticeQuestion["correctAnswer"]>>({});
+  const [checked, setChecked] = useState<Record<number, boolean>>({});
+  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState<number | null>(null);
 
@@ -202,14 +220,22 @@ export function AiPracticePanel({ courses }: { courses: AiCourse[] }) {
     setLoading(true);
     setError("");
     setQuestions([]);
-    setRevealed({});
+    setAttemptId("");
+    setCurrentQuestion(0);
+    setAnswers({});
+    setChecked({});
+    setSubmitted(false);
     try {
-      const data = await requestAi<{ practice: { questions: PracticeQuestion[] }; usage: Usage }>("/api/ai/practice", {
+      const data = await requestAi<{ attemptId: string; practice: { questions: PracticeQuestion[] }; usage: Usage }>("/api/ai/practice", {
         courseId,
         topic: topic.trim(),
         count: Number(count),
       });
+      if (!data.attemptId || !Array.isArray(data.practice?.questions) || data.practice.questions.length !== Number(count)) {
+        throw new Error("The generated practice set was incomplete. Please try again.");
+      }
       setQuestions(data.practice.questions);
+      setAttemptId(data.attemptId);
       setRemaining(data.usage.remaining);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not generate practice questions.");
@@ -218,17 +244,131 @@ export function AiPracticePanel({ courses }: { courses: AiCourse[] }) {
     }
   }
 
+  async function submitPractice() {
+    if (!attemptId || submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const data = await requestAi<{ result: { id: string; totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number } }>("/api/ai/practice/submit", {
+        attemptId,
+        answers: Object.fromEntries(Object.entries(answers).map(([position, answer]) => [position, answer])),
+      });
+      setSubmitted(true);
+      onSubmitted(data.result.id, data.result, courseId);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Could not save your practice results.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const question = questions[currentQuestion];
+  const answeredCount = Object.keys(answers).length;
+  const correctCount = questions.reduce(
+    (total, item, index) => total + (answers[index] === item.correctAnswer ? 1 : 0),
+    0,
+  );
+  const incorrectCount = answeredCount - correctCount;
+  const unansweredCount = questions.length - answeredCount;
+  const percentage = questions.length ? Math.round((correctCount / questions.length) * 100) : 0;
+  const selectedCourse = courses.find((course) => course.id === courseId);
+
   return <section className="ai-tool-page">
-    <div className="ai-generated-banner"><span>✦</span><div><strong>AI-Generated Practice</strong><p>Custom questions only. These are not official NOUN past questions and will not be saved to your question bank or mock history.</p></div></div>
-    <div className="ai-tool-heading"><div className="eyebrow">CUSTOM PRACTICE</div><h1>Build a practice set.</h1><p>Choose a course, topic, and question count. Generated questions stay in this session only.</p></div>
+    <div className="ai-generated-banner"><span>✦</span><div><strong>AI-Generated Practice</strong><p>These are not official NOUN past questions and will never be added to your question bank. Submitted results are saved in Mock History as AI Practice.</p></div></div>
+    <div className="ai-tool-heading"><div className="eyebrow">CUSTOM PRACTICE</div><h1>Build a practice set.</h1><p>Choose a course, topic, and question count. Generated questions stay separate from the official question bank.</p></div>
     <form className="ai-practice-form" onSubmit={generate}>
       <label>Course<select value={courseId} onChange={(event) => setCourseId(event.target.value)} required><option value="">Choose a course</option>{courses.map((course) => <option value={course.id} key={course.id}>{course.code} · {course.title}</option>)}</select></label>
       <label>Topic<input value={topic} onChange={(event) => setTopic(event.target.value)} maxLength={300} placeholder="e.g. opportunity cost" required/></label>
-      <label>Questions<select value={count} onChange={(event) => setCount(event.target.value)}>{[3, 5, 10].map((value) => <option key={value} value={value}>{value} questions</option>)}</select></label>
+      <label>Questions<select value={count} onChange={(event) => setCount(event.target.value)}>{[10, 20, 30, 40, 50].map((value) => <option key={value} value={value}>{value} questions</option>)}</select></label>
       <button className="button" type="submit" disabled={loading || !courseId || !topic.trim()}>{loading ? "Generating…" : "Generate practice"} <span aria-hidden="true">→</span></button>
     </form>
     {error && <p className="ai-error" role="alert">{error}</p>}
     {remaining !== null && <small className="ai-usage-note">{remaining} AI requests remaining today</small>}
-    {questions.length > 0 && <div className="ai-practice-list">{questions.map((question, index) => <article className="ai-practice-card" key={`${index}-${question.question}`}><div className="eyebrow">AI PRACTICE · QUESTION {String(index + 1).padStart(2, "0")}</div><h2>{question.question}</h2><ol type="A">{Object.entries(question.options).map(([letter, text]) => <li key={letter}>{text}</li>)}</ol><button className="ai-quiet-button" type="button" aria-expanded={!!revealed[index]} onClick={() => setRevealed((current) => ({ ...current, [index]: !current[index] }))}>{revealed[index] ? "Hide answer" : "Reveal answer"}</button>{revealed[index] && <div className="ai-practice-answer"><strong>Answer {question.correctAnswer}</strong><p>{question.explanation}</p></div>}</article>)}</div>}
+    {questions.length > 0 && !submitted && question && <div className="ai-practice-session">
+      <div className="ai-practice-session-heading">
+        <div><strong>{selectedCourse ? `${selectedCourse.code} · ${selectedCourse.title}` : "Practice set"}</strong><small>{answeredCount} of {questions.length} answered</small></div>
+        <progress value={currentQuestion + 1} max={questions.length} aria-label={`Question ${currentQuestion + 1} of ${questions.length}`} />
+      </div>
+      <main className="question-stage ai-practice-stage">
+        <div className="question-topline">
+          <span>QUESTION {String(currentQuestion + 1).padStart(2, "0")} <b>/ {String(questions.length).padStart(2, "0")}</b></span>
+          <span>AI PRACTICE · {topic.trim()}</span>
+        </div>
+        <div className="question-card ai-practice-question-card">
+          <span className="question-type-label">MULTIPLE CHOICE</span>
+          <h1>{question.question}</h1>
+          <div className="answer-options">
+            {(["A", "B", "C", "D"] as const).map((letter) => (
+              <label className={`answer-radio ${answers[currentQuestion] === letter ? "selected" : ""}`} key={letter}>
+                <input
+                  type="radio"
+                  name={`ai-practice-question-${currentQuestion}`}
+                  value={letter}
+                  checked={answers[currentQuestion] === letter}
+                  onChange={() => {
+                    setAnswers((previous) => ({ ...previous, [currentQuestion]: letter }));
+                    setChecked((previous) => ({ ...previous, [currentQuestion]: false }));
+                  }}
+                />
+                <span>{letter}</span>
+                <p>{question.options[letter]}</p>
+              </label>
+            ))}
+          </div>
+          <div className="ai-practice-check">
+            <button
+              className="ai-quiet-button"
+              type="button"
+              disabled={!answers[currentQuestion]}
+              aria-expanded={!!checked[currentQuestion]}
+              onClick={() => setChecked((previous) => ({ ...previous, [currentQuestion]: !previous[currentQuestion] }))}
+            >
+              {checked[currentQuestion] ? "Hide explanation" : "Check answer"}
+            </button>
+            {checked[currentQuestion] && <div className={`ai-practice-answer ${answers[currentQuestion] === question.correctAnswer ? "correct" : "incorrect"}`} role="status">
+              <strong>{answers[currentQuestion] === question.correctAnswer ? "Correct!" : `Not quite — the answer is ${question.correctAnswer}.`}</strong>
+              <p>{question.explanation}</p>
+            </div>}
+          </div>
+        </div>
+        <div className="question-footer ai-practice-footer">
+          <button className="button button-light" type="button" disabled={currentQuestion === 0} onClick={() => setCurrentQuestion((value) => Math.max(0, value - 1))}>← Previous</button>
+          {currentQuestion === questions.length - 1 ? (
+            <button className="button" type="button" onClick={submitPractice} disabled={submitting}>{submitting ? "Saving results…" : "Submit Practice Set"} <span aria-hidden="true">→</span></button>
+          ) : (
+            <button className="button" type="button" onClick={() => setCurrentQuestion((value) => Math.min(questions.length - 1, value + 1))}>Next <span aria-hidden="true">→</span></button>
+          )}
+        </div>
+      </main>
+    </div>}
+    {questions.length > 0 && submitted && <div className="ai-practice-results">
+      <div className="ai-practice-result-hero">
+        <div className="eyebrow">PRACTICE COMPLETE</div>
+        <h2>Your results</h2>
+        <strong className="ai-practice-score">{correctCount}<span> / {questions.length}</span></strong>
+        <p>{percentage}% score · {answeredCount} answered · {unansweredCount} unanswered</p>
+        <div className="ai-practice-breakdown">
+          <span><strong>{correctCount}</strong> Correct</span>
+          <span><strong>{incorrectCount}</strong> Incorrect</span>
+          <span><strong>{unansweredCount}</strong> Unanswered</span>
+        </div>
+      </div>
+      <div className="ai-practice-review">
+        <div className="section-row"><div><h2>Answer key review</h2><p>Review your selections and explanations.</p></div></div>
+        {questions.map((item, index) => {
+          const selected = answers[index];
+          const isCorrect = selected === item.correctAnswer;
+          return <article className={`ai-practice-review-item ${selected ? (isCorrect ? "correct" : "incorrect") : "unanswered"}`} key={`${index}-${item.question}`}>
+            <div className="eyebrow">QUESTION {String(index + 1).padStart(2, "0")} · {selected ? (isCorrect ? "CORRECT" : "INCORRECT") : "UNANSWERED"}</div>
+            <h3>{item.question}</h3>
+            <p><strong>Your answer:</strong> {selected ? `${selected}. ${item.options[selected]}` : "Not answered"}</p>
+            <p><strong>Correct answer:</strong> {item.correctAnswer}. {item.options[item.correctAnswer]}</p>
+            <div className="ai-practice-answer"><strong>Explanation</strong><p>{item.explanation}</p></div>
+          </article>;
+        })}
+      </div>
+      <button className="button button-secondary" type="button" onClick={onOpenReview}>Open saved attempt review <span aria-hidden="true">→</span></button>
+      <button className="button" type="button" onClick={() => { setQuestions([]); setAnswers({}); setChecked({}); setSubmitted(false); setCurrentQuestion(0); }}>Create another practice set <span aria-hidden="true">→</span></button>
+    </div>}
   </section>;
 }

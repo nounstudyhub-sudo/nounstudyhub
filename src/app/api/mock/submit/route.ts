@@ -50,7 +50,7 @@ export async function POST(request: Request) {
             const supplied = submitted[questionId];
             const selected = isFillInBlank
               ? typeof supplied === "string" && supplied.trim() ? supplied : null
-              : ["A", "B", "C", "D"].includes(supplied) ? supplied : null;
+              : (row.questionType === "TF" ? ["A", "B"] : ["A", "B", "C", "D"]).includes(supplied) ? supplied : null;
             if (!selected) unanswered += 1;
             const isCorrect = isFillInBlank
               ? selected !== null && selected.trim().toLowerCase() === row.correctAnswer.trim().toLowerCase()

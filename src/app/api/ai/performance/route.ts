@@ -10,7 +10,11 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     await connectToDatabase();
-    const attempts = await MockAttempt.find({ userId: user.id, submittedAt: { $ne: null } })
+    const attempts = await MockAttempt.find({
+      userId: user.id,
+      submittedAt: { $ne: null },
+      $or: [{ type: "PAST_QUESTION" }, { type: { $exists: false } }],
+    })
       .sort({ startedAt: -1 })
       .limit(100)
       .populate("courseId", "code title")

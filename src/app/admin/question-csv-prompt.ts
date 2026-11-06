@@ -5,12 +5,13 @@ Use the bold, dark answer printed beneath each question as its source answer key
 Return exactly this header and column order:
 question,questionType,optionA,optionB,optionC,optionD,correctAnswer,explanation
 
-For every confidently answerable question, output one MCQ row:
-- Set questionType to MCQ, including for original fill-in-the-blank questions. Preserve the blank in the question text.
-- For questions that already have choices, preserve the original choices and remove only their leading labels. Generate distractors only when choices are missing or the question was fill-in-the-blank.
-- Put exactly four non-empty, distinct, relevant options in optionA, optionB, optionC, and optionD. For a fill-in-the-blank, use the keyed term as the correct option and create three plausible but clearly incorrect distractors; avoid alternatives that could also be correct.
-- Set correctAnswer to only the uppercase letter A, B, C, or D for the option containing the verified answer.
-- Give a short explanation of why that answer is correct.
+For every confidently answerable question, output one row:
+- For true/false questions, set questionType to TF, optionA to True, optionB to False, leave optionC and optionD empty, and set correctAnswer to A for True or B for False.
+- Set questionType to MCQ for standard multiple-choice and original fill-in-the-blank questions. Preserve each original fill-in-the-blank in the question text.
+- For MCQ rows with existing choices, preserve the original choices and remove only their leading labels. Generate distractors only when choices are missing or the question was fill-in-the-blank.
+- Every MCQ row must have exactly four non-empty, distinct, relevant options in optionA, optionB, optionC, and optionD. For a fill-in-the-blank, use the keyed term as the correct option and create three plausible but clearly incorrect distractors; avoid alternatives that could also be correct.
+- For MCQ rows, set correctAnswer to only the uppercase letter A, B, C, or D for the option containing the verified answer. For TF rows, use only A or B as specified above.
+- Give a short explanation of why that answer is correct, addressing the student directly as "you". Do not use Markdown asterisks.
 - Preserve course codes and important terminology. Keep each complete question and option in its own CSV field.
 
 If a question or answer is unreadable, ambiguous, or cannot be verified confidently, do not guess. Still include the question if it can be read, but leave correctAnswer empty and begin explanation with "REVIEW REQUIRED:" followed by the specific uncertainty. The importer will reject that row and show its row number so it can be checked manually. Do not mark an uncertain answer as correct.

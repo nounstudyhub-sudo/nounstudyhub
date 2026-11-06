@@ -21,7 +21,18 @@ export async function POST(request: Request) {
     try {
       await session.withTransaction(async () => {
         const bank = await QuestionBank.findOneAndUpdate({ courseId, year }, { $setOnInsert: { courseId, year } }, { upsert: true, new: true, setDefaultsOnInsert: true, session });
-        const inserted = await Question.insertMany(valid.map((item) => ({ courseId, bankId: bank._id, question: item.question, questionType: item.questionType, optionA: item.questionType === "MCQ" ? item.optionA : null, optionB: item.questionType === "MCQ" ? item.optionB : null, optionC: item.questionType === "MCQ" ? item.optionC : null, optionD: item.questionType === "MCQ" ? item.optionD : null, correctAnswer: item.correctAnswer, explanation: item.explanation || null })), { session });
+        const inserted = await Question.insertMany(valid.map((item) => ({
+          courseId,
+          bankId: bank._id,
+          question: item.question,
+          questionType: item.questionType,
+          optionA: item.questionType === "FBQ" ? null : item.optionA,
+          optionB: item.questionType === "FBQ" ? null : item.optionB,
+          optionC: item.questionType === "MCQ" ? item.optionC : null,
+          optionD: item.questionType === "MCQ" ? item.optionD : null,
+          correctAnswer: item.correctAnswer,
+          explanation: item.explanation || null,
+        })), { session });
         await AdminImport.create([{ courseId, bankId: bank._id, questionCount: inserted.length }], { session });
         bankId = bank._id.toString();
         imported = inserted.length;

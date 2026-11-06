@@ -8,8 +8,8 @@ import { ExitIcon, NotificationCenter, StudentCourseContent, StudentDashboard, S
 
 type User = { id: string; username: string; matriculationNumber: string; phoneNumber: string | null; role: string; isActive: boolean; createdAt: string };
 type Course = { id: string; code: string; title: string; description: string; questionCount: number; moduleCount?: number; favorite?: boolean };
-type Attempt = { attempt: { id: string; totalQuestions: number; correctAnswers: number; unanswered?: number; percentage: number; startedAt: string; timeUsed: number }; course: Course };
-type MockQuestion = { id: string; position: number; questionType: "MCQ" | "FBQ"; question: string; options: Partial<Record<"A" | "B" | "C" | "D", string | null>> };
+type Attempt = { attempt: { id: string; type?: "PAST_QUESTION" | "AI_PRACTICE"; totalQuestions: number; correctAnswers: number; unanswered?: number; percentage: number; startedAt: string; timeUsed: number }; course: Course };
+type MockQuestion = { id: string; position: number; questionType: "MCQ" | "FBQ" | "TF"; question: string; options?: Partial<Record<"A" | "B" | "C" | "D", string | null>> };
 type LeaderboardData = { period: string; rows: { rank: number; username: string; shared: number; average: number; attempts: number }[]; forming: boolean; groupSize: number; bestShared: number; me: { username: string; average: number; attempts: number; rank: number | null; courses: number } };
 type AppView = "landing" | "login" | "signup" | "dashboard" | "courses" | "saved" | "course" | "setup" | "mock" | "result" | "review" | "history" | "requests" | "leaderboard" | "profile" | "contact" | "summary" | "ai-chat" | "ai-performance" | "ai-practice";
 
@@ -56,7 +56,7 @@ function SearchField({ value, onChange, placeholder = "Search Courses", onFocus,
 
 function Landing({ onLogin, onSignup, onExplore }: { onLogin: () => void; onSignup: () => void; onExplore: () => void }) {
   return <div className="landing-page">
-    <nav className="public-nav container"><Logo/><div className="public-links"><a href="#features">Why NounStudyHub</a><a href="#how">How it works</a><a href="#contact">Contact</a></div><div className="nav-actions"><Button variant="ghost" onClick={onLogin}>Log in</Button><Button onClick={onSignup}>Create account <Icon name="arrow"/></Button></div></nav>
+    <nav className="public-nav container"><Logo/><div className="public-links"><Link href="#features">Why NounStudyHub</Link><Link href="#how">How it works</Link><Link href="#contact">Contact</Link></div><div className="nav-actions"><Button variant="ghost" onClick={onLogin}>Log in</Button><Button onClick={onSignup}>Create account <Icon name="arrow"/></Button></div></nav>
     <main>
       <section className="hero container">
         <div className="hero-copy">
@@ -87,10 +87,10 @@ function Landing({ onLogin, onSignup, onExplore }: { onLogin: () => void; onSign
       <section id="how" className="how-section"><div className="container how-grid"><div><div className="eyebrow">YOUR STUDY FLOW</div><h2>Small sessions.<br/><em>Real momentum.</em></h2><p>Find a course, understand the topic, test yourself and come back stronger. NounStudyHub keeps every step connected.</p><Button onClick={onSignup}>Build your study rhythm <Icon name="arrow"/></Button></div><div className="steps"><Step number="01" title="Discover a course" text="Search any course by its code or title."/><Step number="02" title="Learn the essentials" text="Move through clear modules and summaries."/><Step number="03" title="Put it to the test" text="Take a mock built from real past questions."/></div></div></section>
       <section id="contact" className="landing-cta container"><div><div className="eyebrow">READY WHEN YOU ARE</div><h2>Your next confident attempt starts here.</h2></div><Button onClick={onSignup}>Create your free account <Icon name="arrow"/></Button></section>
     </main>
-    <footer className="public-footer container"><Logo/><div className="footer-links"><a href="/terms">Terms of use</a><a href="/privacy">Privacy policy</a><a href="mailto:nounstudyhub@gmail.com">Contact</a></div><span>© 2026 NounStudyHub · Made for NOUN students</span></footer>
+    <footer className="public-footer container"><Logo/><div className="footer-links"><Link href="/terms">Terms of use</Link><Link href="/privacy">Privacy policy</Link><a href="mailto:nounstudyhub@gmail.com">Contact</a></div><span>© 2026 NounStudyHub · Made for NOUN students</span></footer>
   </div>;
 }
-function FeatureCard({ icon, title, text, tone }: { icon: string; title: string; text: string; tone: string }) { return <article className="feature-card"><div className={`feature-icon ${tone}`}><Icon name={icon}/></div><h3>{title}</h3><p>{text}</p><a href="#how">Learn more <Icon name="arrow"/></a></article>; }
+function FeatureCard({ icon, title, text, tone }: { icon: string; title: string; text: string; tone: string }) { return <article className="feature-card"><div className={`feature-icon ${tone}`}><Icon name={icon}/></div><h3>{title}</h3><p>{text}</p><Link href="#how">Learn more <Icon name="arrow"/></Link></article>; }
 function Step({ number, title, text }: { number: string; title: string; text: string }) { return <div className="step"><span>{number}</span><div><h3>{title}</h3><p>{text}</p></div><Icon name="check"/></div>; }
 
 function LegacyAuthScreen({ mode, setMode, onSuccess, onBackHome }: { mode: "login" | "signup"; setMode: (mode: "login" | "signup") => void; onSuccess: (user: User) => void; onBackHome: () => void }) {
@@ -109,7 +109,7 @@ function LegacyAuthScreen({ mode, setMode, onSuccess, onBackHome }: { mode: "log
           <Link href={mode === "login" ? "/signup" : "/login"}>{mode === "login" ? "Create an account" : "Log in"}</Link>
         )}
       </p>
-    </div></div><div className="auth-help">By continuing, you agree to our <a href="/terms">Terms of use</a> and <a href="/privacy">Privacy policy</a>.</div></div></div>;
+    </div></div><div className="auth-help">By continuing, you agree to our <Link href="/terms">Terms of use</Link> and <Link href="/privacy">Privacy policy</Link>.</div></div></div>;
 }
 
 type AuthScreenProps = { mode: "login" | "signup"; setMode: (mode: "login" | "signup") => void; onSuccess: (user: User) => void; onBackHome: () => void };
@@ -202,7 +202,7 @@ function LoginRecoveryScreen({ setMode, onSuccess, onBackHome }: AuthScreenProps
           </p>
         </div>
       </div>
-      <div className="auth-help">By continuing, you agree to our <a href="/terms">Terms of use</a> and <a href="/privacy">Privacy policy</a>.</div>
+      <div className="auth-help">By continuing, you agree to our <Link href="/terms">Terms of use</Link> and <Link href="/privacy">Privacy policy</Link>.</div>
     </div>
   </div>;
 }
@@ -291,10 +291,11 @@ function SavedCourses({ favorites, onCourse, onMock, onFavorite, onBrowse }: { f
 
 function CourseDetail({ course, onBack, onMock, onSummary, onAiChat, favorite, onFavorite }: { course: Course; onBack: () => void; onMock: () => void; onSummary: () => void; onAiChat: () => void; favorite: boolean; onFavorite: () => void | Promise<void> }) { return <div className="course-detail"><button className="back-link" onClick={onBack}><Icon name="arrow"/> Back to courses</button><div className="course-hero"><div className="course-hero-icon">{course.code.slice(0, 1)}</div><div><div className="course-code">{course.code}</div><h1>{course.title}</h1><p>{course.description}</p><div className="course-detail-meta"><span><Icon name="book"/> {course.questionCount} questions available</span><span><Icon name="clock"/> {course.moduleCount ?? 0} learning modules</span><span><Icon name="chart"/> Past-question practice</span></div></div><FavoriteToggle className="detail-favorite" active={favorite} onToggle={onFavorite}>{favorite ? <><Icon name="heart"/> Saved</> : <><Icon name="heart"/> Save course</>}</FavoriteToggle></div><div className="course-detail-grid"><div className="detail-main"><div className="section-row"><div><h2>Course modules</h2><p>Build understanding one module at a time.</p></div><Button variant="secondary" onClick={onSummary}><Icon name="book"/> View summary</Button></div><div className="module-list">{["Introduction to microeconomics", "Demand, supply and market equilibrium", "Theory of consumer behaviour", "Production and cost analysis"].map((name, i) => <div className="module-row" key={name}><span className="module-number">0{i + 1}</span><div><strong>{name}</strong><small>{i === 0 ? "6 lessons · 24 min" : `${5 + i} lessons · ${18 + i * 4} min`}</small></div><span className="module-status">{i === 0 ? "In progress" : "Not started"}</span><Icon name="chevron"/></div>)}</div><div className="detail-action-band"><div><span className="eyebrow">READY TO TEST YOURSELF?</span><h3>Put your learning into practice.</h3></div><Button onClick={onMock}>Attempt a mock <Icon name="arrow"/></Button></div></div><aside className="detail-side"><div className="side-card"><div className="side-card-title"><strong>Question banks</strong><span>4 years</span></div>{["2026", "2025", "2024", "2023"].map((year, i) => <div className="year-row" key={year}><span>{year}</span><small>{[100, 130, 100, 100][i]} questions</small><Icon name="arrow"/></div>)}<Button variant="secondary" className="full-button">Browse questions <Icon name="arrow"/></Button></div><div className="side-card green-side"><Icon name="spark"/><strong>Study smarter</strong><p>Try a 20-question mock to warm up, or ask the AI tutor about this course.</p><button onClick={onMock}>Set up a mock <Icon name="arrow"/></button><button onClick={onAiChat}>Ask AI about this course <Icon name="arrow"/></button></div></aside></div></div>; }
 
-function Setup({ course, onBack, onStart }: { course: Course; onBack: () => void; onStart: (count: number, minutes: number) => void }) {
+function Setup({ course, onBack, onStart }: { course: Course; onBack: () => void; onStart: (count: number, minutes: number, questionType: "MCQ" | "FBQ" | "MIXED") => void }) {
   const available = Math.max(1, course.questionCount);
   const [countText, setCountText] = useState(String(Math.min(20, available)));
   const [minText, setMinText] = useState("20");
+  const [questionType, setQuestionType] = useState<"MCQ" | "FBQ" | "MIXED">("MIXED");
   const choices = [10, 20, 50, 70, 100];
   const parsedCount = Number(countText);
   const parsedMin = Number(minText);
@@ -314,7 +315,7 @@ function Setup({ course, onBack, onStart }: { course: Course; onBack: () => void
     else setMinText(String(Math.floor(value)));
   }
 
-  return <div className="setup-page"><button className="back-link" onClick={onBack}><Icon name="arrow"/> Back to {course.code}</button><div className="setup-wrap"><div className="eyebrow">MOCK SETUP</div><h1>Ready when you are.</h1><p>Set your pace for <strong>{course.code} · {course.title}</strong>.</p>{available < 10 && <div className="setup-warning"><Icon name="check"/> Only {available} question{available === 1 ? "" : "s"} available for this course — your mock will use {available}.</div>}<div className="setup-grid"><div className="setup-card"><span className="setup-number">01</span><h2>How many questions?</h2><p>Choose a question count that matches your study time.</p><div className="time-options question-options">{choices.map((count) => <button type="button" disabled={count > available} className={countText === String(count) ? "selected" : ""} onClick={() => setCountText(String(count))} key={count}><span>{count}</span><small>{count === 10 ? "Quick drill" : count === 70 ? "Recommended" : count === 100 ? "Full bank" : "Question set"} · questions</small></button>)}</div><label className="custom-input">Custom<input type="number" min="1" max={available} value={countText} onChange={(event) => setCountText(event.target.value)} onBlur={normalizeCount}/>{!countValid && <span className="availability no">Enter 1–{available}</span>}</label></div><div className="setup-card"><span className="setup-number">02</span><h2>Set your timer</h2><p>Take the time you need. You can submit early anytime.</p><div className="time-options">{[[10,10],[20,20],[50,45],[70,60],[100,90]].map(([questions, minutes]) => <button type="button" className={minText === String(minutes) && countText === String(Math.min(questions, available)) ? "selected" : ""} onClick={() => { setCountText(String(Math.min(questions, available))); setMinText(String(minutes)); }} key={minutes}><span>{minutes}</span><small>minutes · {Math.min(questions, available)} questions</small></button>)}</div><label className="custom-input">Custom time (minutes)<input type="number" min="1" value={minText} onChange={(event) => setMinText(event.target.value)} onBlur={normalizeMin}/>{!minValid && <span className="availability no">Enter 1 or more</span>}</label></div></div><div className="setup-footer"><div><Icon name="check"/><span><strong>Questions are randomly selected</strong><small>Correct answers stay hidden until you submit.</small></span></div><Button onClick={() => onStart(parsedCount, parsedMin)} disabled={!countValid || !minValid}>Start mock <Icon name="arrow"/></Button></div></div></div>;
+  return <div className="setup-page"><button className="back-link" onClick={onBack}><Icon name="arrow"/> Back to {course.code}</button><div className="setup-wrap"><div className="eyebrow">MOCK SETUP</div><h1>Ready when you are.</h1><p>Set your pace for <strong>{course.code} · {course.title}</strong>.</p>{available < 10 && <div className="setup-warning"><Icon name="check"/> Only {available} question{available === 1 ? "" : "s"} available for this course — your mock will use {available}.</div>}<div className="setup-grid"><div className="setup-card"><span className="setup-number">01</span><h2>How many questions?</h2><p>Choose a question count that matches your study time.</p><div className="time-options question-options">{choices.map((count) => <button type="button" disabled={count > available} className={countText === String(count) ? "selected" : ""} onClick={() => setCountText(String(count))} key={count}><span>{count}</span><small>{count === 10 ? "Quick drill" : count === 70 ? "Recommended" : count === 100 ? "Full bank" : "Question set"} · questions</small></button>)}</div><label className="custom-input">Custom<input type="number" min="1" max={available} value={countText} onChange={(event) => setCountText(event.target.value)} onBlur={normalizeCount}/>{!countValid && <span className="availability no">Enter 1–{available}</span>}</label></div><div className="setup-card"><span className="setup-number">02</span><h2>Set your timer</h2><p>Take the time you need. You can submit early anytime.</p><div className="time-options">{[[10,10],[20,20],[50,45],[70,60],[100,90]].map(([questions, minutes]) => <button type="button" className={minText === String(minutes) && countText === String(Math.min(questions, available)) ? "selected" : ""} onClick={() => { setCountText(String(Math.min(questions, available))); setMinText(String(minutes)); }} key={minutes}><span>{minutes}</span><small>minutes · {Math.min(questions, available)} questions</small></button>)}</div><label className="custom-input">Custom time (minutes)<input type="number" min="1" value={minText} onChange={(event) => setMinText(event.target.value)} onBlur={normalizeMin}/>{!minValid && <span className="availability no">Enter 1 or more</span>}</label></div><div className="setup-card"><span className="setup-number">03</span><h2>Question type</h2><p>Choose how you want to practice.</p><div className="time-options question-type-options">{([["MCQ", "Multiple Choice (MCQ)"], ["FBQ", "Fill in the Blank (FBQ)"], ["MIXED", "Mixed"]] as const).map(([value, label]) => <button type="button" aria-pressed={questionType === value} className={questionType === value ? "selected" : ""} onClick={() => setQuestionType(value)} key={value}><span>{label}</span></button>)}</div></div></div><div className="setup-footer"><div><Icon name="check"/><span><strong>Questions are randomly selected</strong><small>Correct answers stay hidden until you submit.</small></span></div><Button onClick={() => onStart(parsedCount, parsedMin, questionType)} disabled={!countValid || !minValid}>Start mock <Icon name="arrow"/></Button></div></div></div>;
 }
 
 function MockScreen({ course, questions, durationMinutes, onSubmit }: { course: Course; questions: MockQuestion[]; durationMinutes: number; onSubmit: (answers: Record<string, string>, timeUsed: number) => void }) {
@@ -366,16 +367,132 @@ function MockScreen({ course, questions, durationMinutes, onSubmit }: { course: 
     return <EmptyState title="No questions available" text="This mock has no questions to display." />;
   }
 
-  return <div className="mock-page"><header className="mock-header"><Logo/><div><span className="mock-course-code">{course.code}</span><strong>{course.title}</strong></div><div className={`mock-timer ${seconds < 60 ? "urgent" : ""}`}><Icon name="clock"/><span>{mins}:{secs}</span><small>remaining</small></div></header><div className="mock-body"><aside className="question-nav"><div><strong>Questions</strong><small>{answered} of {questions.length} answered</small></div><div className="question-dots">{questions.map((item, index) => <button key={item.id} className={`${current === index ? "current" : ""} ${answers[item.id]?.trim() ? "answered" : ""}`} onClick={() => setCurrent(index)}>{index + 1}</button>)}</div><div className="nav-legend"><span><i className="answered"/> Answered</span><span><i/> Not answered</span></div></aside><main className="question-stage"><div className="question-topline"><span>QUESTION {String(current + 1).padStart(2, "0")} <b>/ {String(questions.length).padStart(2, "0")}</b></span><span><Icon name="spark"/> Take your time</span></div><div className="question-card"><span className="question-type-label">{question.questionType === "FBQ" ? "FILL IN THE BLANK" : "MULTIPLE CHOICE"}</span><h1>{question.question}</h1>{question.questionType === "FBQ" ? <label className="fbq-answer">Your answer<input type="text" autoComplete="off" value={answers[question.id] ?? ""} onChange={(event) => setAnswer(event.target.value)} placeholder="Type your answer" /></label> : <div className="answer-options">{(["A", "B", "C", "D"] as const).map((letter) => { const text = question.options[letter]; if (typeof text !== "string") return null; return <label className={`answer-radio ${answers[question.id] === letter ? "selected" : ""}`} key={letter}><input type="radio" name={`question-${question.id}`} value={letter} checked={answers[question.id] === letter} onChange={() => setAnswer(letter)} /><span>{letter}</span><p>{text}</p></label>; })}</div>}</div><div className="question-footer"><Button variant="light" disabled={current === 0} onClick={() => setCurrent(Math.max(0, current - 1))}>← Previous</Button>{current === questions.length - 1 ? <Button onClick={() => setConfirm(true)}>Submit mock <Icon name="arrow"/></Button> : <Button onClick={() => setCurrent(Math.min(questions.length - 1, current + 1))}>Next question <Icon name="arrow"/></Button>}</div></main></div>{confirm && <div className="confirm-overlay"><div className="confirm-card"><span className="confirm-icon"><Icon name="check"/></span><h2>Submit your mock?</h2><p>You have answered <strong>{answered} of {questions.length}</strong> questions. You can&apos;t change your answers after submitting.</p><div><Button variant="light" onClick={() => setConfirm(false)}>Keep reviewing</Button>  <Button onClick={() => {
+  function submitConfirmed() {
     if (submittedRef.current) return;
     submittedRef.current = true;
     onSubmitRef.current(answersRef.current, Math.max(1, durationSeconds - secondsRef.current));
-  }}>Submit mock <Icon name="arrow"/></Button></div></div></div>}</div>;
+  }
+
+  return (
+    <div className="mock-page">
+      <header className="mock-header">
+        <Logo />
+        <div>
+          <span className="mock-course-code">{course.code}</span>
+          <strong>{course.title}</strong>
+        </div>
+        <div className={`mock-timer ${seconds < 60 ? "urgent" : ""}`}>
+          <Icon name="clock" />
+          <span>{mins}:{secs}</span>
+          <small>remaining</small>
+        </div>
+      </header>
+      <div className="mock-body">
+        <aside className="question-nav">
+          <div className="question-nav-heading">
+            <strong>Questions</strong>
+            <small>{answered} of {questions.length} answered</small>
+          </div>
+          <div className="question-dots" aria-label="Question palette">
+            {questions.map((item, index) => (
+              <button
+                type="button"
+                key={item.id}
+                aria-label={`Go to question ${index + 1}${answers[item.id]?.trim() ? ", answered" : ""}`}
+                aria-current={current === index ? "step" : undefined}
+                className={`${current === index ? "current" : ""} ${answers[item.id]?.trim() ? "answered" : ""}`}
+                onClick={() => setCurrent(index)}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+          <div className="nav-legend">
+            <span><i className="answered" /> Answered</span>
+            <span><i /> Not answered</span>
+          </div>
+          <Button className="sidebar-submit" onClick={() => setConfirm(true)}>
+            Submit Mock <Icon name="arrow" />
+          </Button>
+        </aside>
+        <main className="question-stage">
+          <div className="question-topline">
+            <span>QUESTION {String(current + 1).padStart(2, "0")} <b>/ {String(questions.length).padStart(2, "0")}</b></span>
+            <span><Icon name="spark" /> Take your time</span>
+          </div>
+          <div className="question-card">
+            <span className="question-type-label">
+              {question.questionType === "FBQ" ? "FILL IN THE BLANK" : question.questionType === "TF" ? "TRUE / FALSE" : "MULTIPLE CHOICE"}
+            </span>
+            <h1>{question.question}</h1>
+            {question.questionType === "FBQ" ? (
+              <label className="fbq-answer">
+                Your answer
+                <input
+                  type="text"
+                  autoComplete="off"
+                  value={answers[question.id] ?? ""}
+                  onChange={(event) => setAnswer(event.target.value)}
+                  placeholder="Type your answer"
+                />
+              </label>
+            ) : (
+              <div className="answer-options">
+                {(["A", "B", "C", "D"] as const).map((letter) => {
+                  const text = question.options?.[letter];
+                  if (typeof text !== "string") return null;
+                  return (
+                    <label className={`answer-radio ${answers[question.id] === letter ? "selected" : ""}`} key={letter}>
+                      <input
+                        type="radio"
+                        name={`question-${question.id}`}
+                        value={letter}
+                        checked={answers[question.id] === letter}
+                        onChange={() => setAnswer(letter)}
+                      />
+                      <span>{letter}</span>
+                      <p>{text}</p>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className="question-footer">
+            <Button variant="light" disabled={current === 0} onClick={() => setCurrent(Math.max(0, current - 1))}>
+              ← Previous
+            </Button>
+            {current === questions.length - 1 ? (
+              <Button onClick={() => setConfirm(true)}>Submit mock <Icon name="arrow" /></Button>
+            ) : (
+              <Button onClick={() => setCurrent(Math.min(questions.length - 1, current + 1))}>
+                Next question <Icon name="arrow" />
+              </Button>
+            )}
+          </div>
+        </main>
+      </div>
+      {confirm && (
+        <div className="confirm-overlay" role="presentation">
+          <div className="confirm-card" role="dialog" aria-modal="true" aria-labelledby="mock-submit-title">
+            <span className="confirm-icon"><Icon name="check" /></span>
+            <h2 id="mock-submit-title">Are you sure you want to submit?</h2>
+            <p>You have answered <strong>{answered} of {questions.length}</strong> questions.</p>
+            <div>
+              <Button variant="light" onClick={() => setConfirm(false)}>Keep reviewing</Button>
+              <Button onClick={submitConfirmed}>Submit mock <Icon name="arrow" /></Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function ResultView({ course, attemptId, result, onReview, onBack }: { course: Course; attemptId: string; result: { totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number }; onReview: () => void; onBack: () => void }) {
+function ResultView({ course, attemptId, result, attemptType, onReview, onBack }: { course: Course; attemptId: string; attemptType: "PAST_QUESTION" | "AI_PRACTICE"; result: { totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number }; onReview: () => void; onBack: () => void }) {
   const wrong = result.totalQuestions - result.correctAnswers - result.unanswered;
-  return <div className="result-page"><div className="result-celebrate"><span className="result-badge"><Icon name="check"/></span><div className="eyebrow">MOCK COMPLETE</div><h1>Nice work. Keep going.</h1><p>You finished your {course.code} mock. Here&apos;s how you did.</p></div><div className="result-card"><div className="result-course"><span className="course-icon course-icon-blue">{course.code[0]}</span><div><strong>{course.code}</strong><small>{course.title}</small></div><span className="result-date">Just now</span></div><div className="score-hero"><div className="score-circle"><strong>{result.percentage}%</strong><span>your score</span></div><div className="score-copy"><h2>{result.correctAnswers}/{result.totalQuestions}</h2><p>questions answered correctly</p><div className="score-message"><Icon name="spark"/> {result.percentage >= 80 ? "Excellent progress — you’re building real confidence." : "Good effort — review the answers and try again soon."}</div></div></div><div className="result-breakdown"><div><span className="green-dot"/><strong>{result.correctAnswers}</strong><small>Correct</small></div><div><span className="red-dot"/><strong>{wrong}</strong><small>Wrong</small></div><div><span className="gray-dot"/><strong>{result.unanswered}</strong><small>Unanswered</small></div><div><span className="blue-dot"/><strong>{Math.floor(result.timeUsed / 60)}m</strong><small>Time used</small></div></div><div className="result-actions"><Button onClick={onReview}>Review answers <Icon name="arrow"/></Button><Button variant="light" onClick={onBack}>Back to course</Button></div></div><section className="result-ai-review"><div className="section-row"><div><h2>Review each answer</h2><p>Official answers are stored with your mock. Ask AI for an explanation without changing the answer key.</p></div></div><MockQuestionReview key={attemptId} attemptId={attemptId}/></section></div>;
+  const attemptLabel = attemptType === "AI_PRACTICE" ? "AI Practice" : "Past Question";
+  return <div className="result-page"><div className="result-celebrate"><span className={`attempt-type-badge ${attemptType === "AI_PRACTICE" ? "ai-practice" : "past-question"}`}>{attemptType === "AI_PRACTICE" ? "✦ " : ""}{attemptLabel}</span><span className="result-badge"><Icon name="check"/></span><div className="eyebrow">MOCK COMPLETE</div><h1>Nice work. Keep going.</h1><p>You finished your {course.code} {attemptLabel.toLowerCase()}. Here&apos;s how you did.</p></div><div className="result-card"><div className="result-course"><span className="course-icon course-icon-blue">{course.code[0]}</span><div><strong>{course.code}</strong><small>{course.title}</small></div><span className="result-date">Just now</span></div><div className="score-hero"><div className="score-circle"><strong>{result.percentage}%</strong><span>your score</span></div><div className="score-copy"><h2>{result.correctAnswers}/{result.totalQuestions}</h2><p>questions answered correctly</p><div className="score-message"><Icon name="spark"/> {result.percentage >= 80 ? "Excellent progress — you’re building real confidence." : "Good effort — review the answers and try again soon."}</div></div></div><div className="result-breakdown"><div><span className="green-dot"/><strong>{result.correctAnswers}</strong><small>Correct</small></div><div><span className="red-dot"/><strong>{wrong}</strong><small>Wrong</small></div><div><span className="gray-dot"/><strong>{result.unanswered}</strong><small>Unanswered</small></div><div><span className="blue-dot"/><strong>{Math.floor(result.timeUsed / 60)}m</strong><small>Time used</small></div></div><div className="result-actions"><Button onClick={onReview}>Review answers <Icon name="arrow"/></Button><Button variant="light" onClick={onBack}>Back to course</Button></div></div>{attemptType === "PAST_QUESTION" && <section className="result-ai-review"><div className="section-row"><div><h2>Review each answer</h2><p>Official answers are stored with your mock. Ask AI for an explanation without changing the answer key.</p></div></div><MockQuestionReview key={attemptId} attemptId={attemptId}/></section>}</div>;
 }
 
 function History({ onOpen }: { onOpen: (item: Attempt) => void }) { const [query, setQuery] = useState(""); const filtered = sampleAttempts.filter((a) => `${a.course.code} ${a.course.title}`.toLowerCase().includes(query.toLowerCase())); return <div><PageHeading eyebrow="YOUR PRACTICE JOURNEY" title="Mock history" text="Review every attempt and see how your confidence is building."/><div className="history-toolbar"><SearchField value={query} onChange={setQuery} placeholder="Search course history"/><button className="filter-button"><Icon name="filter"/> All courses <Icon name="chevron"/></button></div><div className="history-card"><div className="history-head"><span>Course</span><span>Date attempted</span><span>Result</span><span/></div>{filtered.map((item) => <button className="history-row" key={item.attempt.id} onClick={() => onOpen(item)}><span className="history-course"><i className={`course-icon-small ${item.course.code === "ECO231" ? "blue" : "purple"}`}>{item.course.code[0]}</i><span><strong>{item.course.code}</strong><small>{item.course.title}</small></span></span><span>{new Date(item.attempt.startedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span><span className="history-result"><strong>{item.attempt.correctAnswers}/{item.attempt.totalQuestions}</strong><small>{item.attempt.percentage}% score</small></span><Icon name="arrow"/></button>)}</div></div>; }
@@ -408,7 +525,7 @@ function EmptyState({ title, text }: { title: string; text: string }) { return <
 
 function GuestCourses({ courses, onLogin, onSignup, onOpenCourse, coursesLoading, coursesError }: { courses: Course[]; onLogin: () => void; onSignup: () => void; onOpenCourse: (course: Course) => void; coursesLoading: boolean; coursesError: string }) {
   return <div className="landing-page guest-courses">
-    <nav className="public-nav container"><Logo/><div className="public-links"><a href="#features">Why NounStudyHub</a><a href="#how">How it works</a><a href="#contact">Contact</a></div><div className="nav-actions"><Button variant="ghost" onClick={onLogin}>Log in</Button><Button onClick={onSignup}>Create account <Icon name="arrow"/></Button></div></nav>
+    <nav className="public-nav container"><Logo/><div className="public-links"><Link href="/#features">Why NounStudyHub</Link><Link href="/#how">How it works</Link><Link href="/#contact">Contact</Link></div><div className="nav-actions"><Button variant="ghost" onClick={onLogin}>Log in</Button><Button onClick={onSignup}>Create account <Icon name="arrow"/></Button></div></nav>
     <main className="container"><div className="guest-courses-banner"><div className="eyebrow">EXPLORE COURSES</div><h2>Browse every course on NounStudyHub.</h2><p>Preview the full library before you sign in. Sign up to start practising.</p></div><CourseLibrary courses={courses} onCourse={onOpenCourse} onMock={onSignup} favorites={[]} onFavorite={onSignup} loading={coursesLoading} error={coursesError}/></main>
   </div>;
 }
@@ -418,8 +535,10 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
   const [mockBankYear, setMockBankYear] = useState<number | null>(null);
   const [mockDurationMinutes, setMockDurationMinutes] = useState(20);
   const [appError, setAppError] = useState("");
-  const [view, setView] = useState<AppView>(initialAuthMode ?? "landing"); const [authMode, setAuthMode] = useState<"login" | "signup">(initialAuthMode ?? "login"); const [user, setUser] = useState<User | null>(null); const [courses, setCourses] = useState<Course[]>([]); const [coursesLoading, setCoursesLoading] = useState(true); const [coursesError, setCoursesError] = useState(""); const [favorites, setFavorites] = useState<Course[]>([]); const [selectedCourse, setSelectedCourse] = useState<Course>(sampleCourses[0]); const [mockQuestions, setMockQuestions] = useState<MockQuestion[]>([]); const [mockAttemptId, setMockAttemptId] = useState("demo"); const [mockResult, setMockResult] = useState<{ totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number } | null>(null); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [loading, setLoading] = useState(false);
-  useEffect(() => { requestJson<{ user: User | null }>("/api/auth/me").then((data) => { if (data.user) { setUser(data.user); setView("dashboard"); } }).catch(() => undefined); }, []);
+  const [view, setView] = useState<AppView>(initialAuthMode ?? "landing"); const [authMode, setAuthMode] = useState<"login" | "signup">(initialAuthMode ?? "login"); const [user, setUser] = useState<User | null>(null); const [courses, setCourses] = useState<Course[]>([]); const [coursesLoading, setCoursesLoading] = useState(true); const [coursesError, setCoursesError] = useState(""); const [favorites, setFavorites] = useState<Course[]>([]); const [selectedCourse, setSelectedCourse] = useState<Course>(sampleCourses[0]); const [mockQuestions, setMockQuestions] = useState<MockQuestion[]>([]); const [mockAttemptId, setMockAttemptId] = useState("demo"); const [mockAttemptType, setMockAttemptType] = useState<"PAST_QUESTION" | "AI_PRACTICE">("PAST_QUESTION"); const [mockResult, setMockResult] = useState<{ totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number } | null>(null); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    requestJson<{ user: User | null }>("/api/auth/me").then((data) => { if (data.user) { setUser(data.user); setView("dashboard"); } }).catch(() => undefined);
+  }, []);
   useEffect(() => {
     requestJson<{ courses: Course[] }>("/api/courses")
       .then((data) => {
@@ -450,7 +569,8 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
   function goAuth(mode: "login" | "signup") { setAuthMode(mode); setView(mode); }
   function openCourse(course: Course) { setSelectedCourse(course); setView("course"); if (!course.id.startsWith("sample-")) requestJson(`/api/courses/${course.id}/view`, { method: "POST" }).catch(() => undefined); }
   function startSetup(course: Course, year: number | null = null, availableQuestions = course.questionCount) { setSelectedCourse({ ...course, questionCount: availableQuestions }); setMockBankYear(year); setAppError(""); setView("setup"); }
-  async function startMock(count: number, minutes: number) {
+  async function startMock(count: number, minutes: number, questionType: "MCQ" | "FBQ" | "MIXED") {
+    setMockAttemptType("PAST_QUESTION");
     setMockDurationMinutes(minutes);
     setLoading(true);
     setAppError("");
@@ -465,6 +585,7 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
             questionCount: count,
             timeLimit: minutes,
             year: mockBankYear,
+            questionType,
           }),
         },
       );
@@ -507,7 +628,7 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
     }
   }
   const submitMock = async (answers: Record<string, string>, timeUsed: number) => { setAppError(""); try { const data = await requestJson<{ result: { totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number } }>("/api/mock/submit", { method: "POST", body: JSON.stringify({ attemptId: mockAttemptId, answers, timeUsed }) }); setMockResult(data.result); setView("result"); } catch (error) { setAppError(error instanceof Error ? error.message : "Could not submit mock results."); } };
-  function openAttemptResult(item: Attempt) { setSelectedCourse(item.course); setMockResult({ totalQuestions: item.attempt.totalQuestions, correctAnswers: item.attempt.correctAnswers, unanswered: item.attempt.unanswered ?? Math.max(0, item.attempt.totalQuestions - item.attempt.correctAnswers), percentage: item.attempt.percentage, timeUsed: item.attempt.timeUsed }); setMockAttemptId(item.attempt.id); setView("result"); }
+  function openAttemptResult(item: Attempt) { setSelectedCourse(item.course); setMockAttemptType(item.attempt.type ?? "PAST_QUESTION"); setMockResult({ totalQuestions: item.attempt.totalQuestions, correctAnswers: item.attempt.correctAnswers, unanswered: item.attempt.unanswered ?? Math.max(0, item.attempt.totalQuestions - item.attempt.correctAnswers), percentage: item.attempt.percentage, timeUsed: item.attempt.timeUsed }); setMockAttemptId(item.attempt.id); setView("result"); }
   async function logout() { await requestJson("/api/auth/logout", { method: "POST" }).catch(() => undefined); setUser(null); setFavorites([]); setView("landing"); }
   async function deleteAccount() { try { await requestJson("/api/profile", { method: "DELETE" }); setUser(null); setFavorites([]); setCourses([]); setView("landing"); } catch (error) { setAppError(error instanceof Error ? error.message : "Could not delete account."); } }
   async function toggleFavorite(course: Course) {
@@ -528,11 +649,11 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
     : view === "course" ? user.role === "student" ? <StudentCourseContent key={selectedCourse.id} course={selectedCourse} onBack={() => setView("courses")} onMock={(year, count) => startSetup(selectedCourse, year ?? null, count ?? selectedCourse.questionCount)}/> : <CourseDetail course={selectedCourse} onBack={() => setView("courses")} onMock={() => startSetup(selectedCourse)} onSummary={() => setView("summary")} onAiChat={() => { setAssistantCourseId(selectedCourse.id); setView("ai-chat"); }} favorite={favorites.some((item) => item.id === selectedCourse.id)} onFavorite={() => toggleFavorite(selectedCourse)}/>
     : view === "setup" ? <Setup course={selectedCourse} onBack={() => setView("course")} onStart={startMock}/>
     : view === "mock" ? (mockQuestions.length ? <MockScreen course={selectedCourse} questions={mockQuestions} durationMinutes={mockDurationMinutes} onSubmit={submitMock}/> : <EmptyState title="No questions available" text="This mock could not be started because there are no questions to load."/>)
-    : view === "result" && mockResult ? <ResultView course={selectedCourse} attemptId={mockAttemptId} result={mockResult} onReview={() => setView("review")} onBack={() => setView("course")}/>
+    : view === "result" && mockResult ? <ResultView course={selectedCourse} attemptId={mockAttemptId} attemptType={mockAttemptType} result={mockResult} onReview={() => setView("review")} onBack={() => setView(mockAttemptType === "AI_PRACTICE" ? "ai-practice" : "course")}/>
     : view === "review" ? <ReviewView key={mockAttemptId} course={selectedCourse} attemptId={mockAttemptId} onBack={() => setView("result")} onRetake={() => setView("setup")}/>
     : view === "ai-chat" ? <AiStudyAssistant courses={aiCourses} initialCourseId={assistantCourseId}/>
     : view === "ai-performance" ? <AiPerformanceAnalysis/>
-    : view === "ai-practice" ? <AiPracticePanel courses={aiCourses}/>
+    : view === "ai-practice" ? <AiPracticePanel courses={aiCourses} onSubmitted={(attemptId, result, courseId) => { setMockAttemptId(attemptId); setMockAttemptType("AI_PRACTICE"); setMockResult(result); const course = courses.find((item) => item.id === courseId); if (course) setSelectedCourse(course); }} onOpenReview={() => setView("review")}/>
     : view === "history" ? user.role === "student" ? <StudentHistory onOpen={openAttemptResult}/> : <History onOpen={openAttemptResult}/>
     : view === "requests" ? user.role === "student" ? <StudentRequests onBack={() => setView("dashboard")}/> : <Requests onBack={() => setView("dashboard")}/>
     : view === "leaderboard" ? <Leaderboard/>

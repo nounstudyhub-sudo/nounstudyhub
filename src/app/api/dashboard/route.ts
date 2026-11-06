@@ -10,9 +10,9 @@ export async function GET() {
       MockAttempt.find({ userId: user.id, submittedAt: { $ne: null } }).sort({ startedAt: -1 }).limit(10).populate("courseId").lean(),
       CourseView.find({ userId: user.id }).sort({ viewedAt: -1 }).limit(6).populate("courseId").lean(),
       Favorite.find({ userId: user.id }).sort({ createdAt: -1 }).populate("courseId").lean(),
-      MockAttempt.countDocuments({ userId: user.id, submittedAt: { $ne: null } }),
+      MockAttempt.countDocuments({ userId: user.id, submittedAt: { $ne: null }, $or: [{ type: "PAST_QUESTION" }, { type: { $exists: false } }] }),
       MockAttempt.aggregate([
-        { $match: { userId: user.id, submittedAt: { $ne: null } } },
+        { $match: { userId: user.id, submittedAt: { $ne: null }, $or: [{ type: "PAST_QUESTION" }, { type: { $exists: false } }] } },
         { $group: { _id: null, averageScore: { $avg: "$percentage" } } },
       ]),
       StudyProgress.find({ userId: user.id }).sort({ lastStudiedAt: -1 }).limit(1).lean(),
