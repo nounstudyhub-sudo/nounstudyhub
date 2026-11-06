@@ -1,5 +1,4 @@
 import "server-only";
-import { GoogleGenAI } from "@google/genai";
 import { connectToDatabase } from "@/db";
 import { AiUsage } from "@/db/models";
 import { requireUser } from "@/lib/auth";
@@ -57,8 +56,9 @@ async function reserveUsage(userId: string, day: string, expiresAt: Date, limit:
 
 export async function generateAiResponse({ feature, prompt, responseMimeType = "text/plain", maxOutputTokens = 1024 }: GenerateOptions) {
   const user = await requireUser();
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) throw new AiRouteError("AI features are not configured.", 503);
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
+  if (!apiKey) throw new AiRouteError("AI features are not configured. Set OPENROUTER_API_KEY on the server.", 503);
+  const model = process.env.OPENROUTER_MODEL?.trim() || "openrouter/auto";
 
   await connectToDatabase();
   const now = new Date();
@@ -70,13 +70,47 @@ export async function generateAiResponse({ feature, prompt, responseMimeType = "
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: { responseMimeType, maxOutputTokens },
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "X-Title": "NounStudyHub",
+        ...(process.env.OPENROUTER_SITE_URL?.trim()
+          ? { "HTTP-Referer": process.env.OPENROUTER_SITE_URL.trim() }
+          : {}),
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: maxOutputTokens,
+        ...(responseMimeType === "application/json"
+          ? { response_format: { type: "json_object" } }
+          : {}),
+      }),
     });
-    const text = result.text?.trim();
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new AiRouteError("OpenRouter rejected the API key or model access. Check your server configuration.", 503);
+      }
+      if (response.status === 402) {
+        throw new AiRouteError("OpenRouter requires available account credits to process this request.", 503);
+      }
+      if (response.status === 429) {
+        throw new AiRouteError("OpenRouter is busy or rate-limited right now. Please try again shortly.", 429);
+      }
+      throw new Error(`OpenRouter request failed with status ${response.status}.`);
+    }
+
+    const result = await response.json() as {
+      choices?: { message?: { content?: string | { type?: string; text?: string }[] | null } }[];
+    };
+    const content = result.choices?.[0]?.message?.content;
+    const text = (typeof content === "string"
+      ? content
+      : Array.isArray(content)
+        ? content.map((part) => part.text ?? "").join("")
+        : "").trim();
     if (!text) throw new Error("Empty model response.");
     return {
       text,
@@ -84,11 +118,6 @@ export async function generateAiResponse({ feature, prompt, responseMimeType = "
     };
   } catch (error) {
     if (error instanceof AiRouteError) throw error;
-    const providerError = error as { status?: number; code?: number | string };
-    const providerMessage = error instanceof Error ? error.message : "";
-    if (providerError.status === 429 || Number(providerError.code) === 429 || /RESOURCE_EXHAUSTED|\b429\b/i.test(providerMessage)) {
-      throw new AiRouteError("Gemini is busy right now. Please try again shortly.", 429);
-    }
     console.error(`[ai:${feature}] Provider request failed (${error instanceof Error ? error.name : "unknown error"}).`);
     throw new AiRouteError("The AI service could not complete this request.", 502);
   }

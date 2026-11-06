@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import "./admin-content.css";
 import { TrashIcon } from "../student-data-views";
+import csvPrompt from "./question-csv-prompt";
+import { getImportErrorMessage, QUESTION_CSV_HEADERS, stringifyQuestionCsv } from "@/lib/question-csv";
 
 type Section = "courses" | "summaries" | "questions";
 type Course = { id: string; code: string; title: string; description: string; moduleCount: number; unitCount: number; questionCount: number };
@@ -11,16 +13,10 @@ type Unit = { id: string; title: string; content: string };
 type Bank = { id: string; year: number; questionCount: number };
 type Dialog = { mode: "add" | "edit" | "view"; unit?: Unit };
 
-const csvPrompt = `Convert the attached PDF question bank into CSV using exactly these columns: question,questionType,optionA,optionB,optionC,optionD,correctAnswer,explanation.
-Identify if the question is Multiple Choice ('MCQ') or Fill-in-the-Blank ('FBQ').
-For MCQs: Put the four options into optionA to optionD, and the correct option letter (A, B, C, or D) in correctAnswer.
-For FBQs: Leave optionA to optionD empty, and put the exact missing word/phrase in correctAnswer.
-In the explanation column, write one short sentence explaining the answer. Return only valid CSV data with the header row. Properly escape commas and quotation marks.`;
-
 async function adminRequest(url: string, options?: RequestInit) {
   const response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) } });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "The request could not be completed.");
+  if (!response.ok) throw new Error(getImportErrorMessage(data, "The request could not be completed."));
   return data;
 }
 
@@ -43,6 +39,7 @@ export default function AdminContentManager({ section, notify }: { section: Sect
   const [singleQuestion, setSingleQuestion] = useState({ question: "", questionType: "MCQ" as "MCQ" | "FBQ", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", explanation: "" });
   const [questionYear, setQuestionYear] = useState(String(new Date().getFullYear()));
   const [csv, setCsv] = useState("");
+  const [questionImportErrors, setQuestionImportErrors] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -203,12 +200,18 @@ export default function AdminContentManager({ section, notify }: { section: Sect
     event.preventDefault();
     if (!selectedCourse) return;
     await runMutation(async () => {
-      const quoteCsv = (value: string) => `"${value.replaceAll('"', '""')}"`;
-      const singleCsv = [
-        ["question", "optionA", "optionB", "optionC", "optionD", "correctAnswer", "explanation"],
+      const singleCsv = stringifyQuestionCsv([
+        QUESTION_CSV_HEADERS,
         [singleQuestion.question, singleQuestion.questionType, singleQuestion.questionType === "MCQ" ? singleQuestion.optionA : "", singleQuestion.questionType === "MCQ" ? singleQuestion.optionB : "", singleQuestion.questionType === "MCQ" ? singleQuestion.optionC : "", singleQuestion.questionType === "MCQ" ? singleQuestion.optionD : "", singleQuestion.correctAnswer, singleQuestion.explanation],
-      ].map((row) => row.map(quoteCsv).join(",")).join("\n");
-      const data = await adminRequest("/api/admin/import", { method: "POST", body: JSON.stringify({ courseId: selectedCourse.id, year: questionYear, csv: questionMode === "single" ? singleCsv : csv }) });
+      ]);
+      let data;
+      try {
+        data = await adminRequest("/api/admin/import", { method: "POST", body: JSON.stringify({ courseId: selectedCourse.id, year: questionYear, csv: questionMode === "single" ? singleCsv : csv }) });
+      } catch (error) {
+        setQuestionImportErrors([error instanceof Error ? error.message : "Question import failed."]);
+        throw error;
+      }
+      setQuestionImportErrors([]);
       setBanks((current) => {
         const year = Number(questionYear);
         const existing = current.find((bank) => bank.year === year);
@@ -280,6 +283,7 @@ export default function AdminContentManager({ section, notify }: { section: Sect
             {singleQuestion.questionType === "MCQ" ? <>{(["A", "B", "C", "D"] as const).map((letter) => <label key={letter}>Option {letter}<input required value={singleQuestion[`option${letter}`]} onChange={(event) => setSingleQuestion({ ...singleQuestion, [`option${letter}`]: event.target.value })} /></label>)}<label>Correct option<select required value={singleQuestion.correctAnswer} onChange={(event) => setSingleQuestion({ ...singleQuestion, correctAnswer: event.target.value })}><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></label></> : <label>Correct answer<input required value={singleQuestion.correctAnswer} onChange={(event) => setSingleQuestion({ ...singleQuestion, correctAnswer: event.target.value })} placeholder="Exact missing word or phrase" /></label>}
             <label>Explanation<input value={singleQuestion.explanation} onChange={(event) => setSingleQuestion({ ...singleQuestion, explanation: event.target.value })} /></label>
           </>}
+          {questionImportErrors.length > 0 && <div className="admin-import-errors" role="alert"><strong>Import needs attention:</strong><ul>{questionImportErrors.map((message, index) => <li key={`${index}-${message}`}>{message}</li>)}</ul></div>}
           <button type="submit" disabled={saving}>{saving ? "Importing…" : `Import question${questionMode === "single" ? "" : "s"}`}</button>
         </form>}
         <div className="admin-course-list">{banks.map((bank, index) => <article className="admin-course-row" key={bank.id}><div className="admin-course-row-main"><strong>{index + 1}. {bank.year}</strong><small>{bank.questionCount} questions</small></div><button className="admin-icon-button admin-delete-button" aria-label={`Delete ${bank.year} question bank`} title="Delete question bank" onClick={() => void deleteBank(bank)}><TrashIcon/></button></article>)}{!banks.length && <div className="admin-empty">No question banks added yet.</div>}</div>

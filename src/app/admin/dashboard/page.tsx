@@ -2,18 +2,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminContentManager from "../admin-content-manager";
+import csvPrompt from "../question-csv-prompt";
 import { ExitIcon, NotificationCenter, type NotificationItem } from "../../student-data-views";
+import { getImportErrorMessage } from "@/lib/question-csv";
 
 type AdminStats = { users: number; courses: number; questions: number; attempts: number; pending: number };
 type AdminCourse = { id: string; code: string; title: string; description: string; questionCount: number };
 type AdminRequest = { request: { id: string; requestText: string; status: string; createdAt: string; userId: string }; user: { username: string } };
 const adminNav = [{ key: "overview", label: "Dashboard", icon: "▦" }, { key: "users", label: "Users", icon: "◯" }, { key: "leaderboard", label: "Leaderboard", icon: "↗" }, { key: "courses", label: "Courses", icon: "▤" }, { key: "summaries", label: "Summaries", icon: "✦" }, { key: "questions", label: "Questions", icon: "≡" }, { key: "requests", label: "Requested Courses", icon: "＋" }];
-const prompt = `Convert the attached PDF question bank into CSV using exactly these columns: question,questionType,optionA,optionB,optionC,optionD,correctAnswer,explanation.
-Identify if the question is Multiple Choice ('MCQ') or Fill-in-the-Blank ('FBQ').
-For MCQs: Put the four options into optionA to optionD, and the correct option letter (A, B, C, or D) in correctAnswer.
-For FBQs: Leave optionA to optionD empty, and put the exact missing word/phrase in correctAnswer.
-In the explanation column, write one short sentence explaining the answer. Return only valid CSV data with the header row. Properly escape commas and quotation marks.`;
-
 async function adminFetch(url: string, options?: RequestInit) {
   const response = await fetch(url, { ...options, headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) } });
   const contentType = response.headers.get("content-type") || "";
@@ -23,7 +19,7 @@ async function adminFetch(url: string, options?: RequestInit) {
   return { ok: response.ok, status: response.status, data };
 }
 
-export default function AdminDashboardPage({ initialSection = "overview" }: { initialSection?: string }) { const router = useRouter(); const [section, setSection] = useState(initialSection); const [sidebarOpen, setSidebarOpen] = useState(false); const [stats, setStats] = useState<AdminStats>({ users: 0, courses: 0, questions: 0, attempts: 0, pending: 0 }); const [courses, setCourses] = useState<AdminCourse[]>([]); const [requests, setRequests] = useState<AdminRequest[]>([]); const [recentUsers, setRecentUsers] = useState<{ username: string; matriculationNumber: string; createdAt: string }[]>([]); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [toast, setToast] = useState(""); const [courseForm, setCourseForm] = useState({ code: "", title: "", description: "" }); const [importForm, setImportForm] = useState({ courseId: "", year: "2026", csv: "" }); const [users, setUsers] = useState<{ username: string; matriculationNumber: string; phoneNumber: string | null; createdAt: string; isActive: boolean }[]>([]); const [userSearch, setUserSearch] = useState(""); const [leaderboard, setLeaderboard] = useState<{ username: string; average: number; attempts: number }[]>([]);
+export default function AdminDashboardPage({ initialSection = "overview" }: { initialSection?: string }) { const router = useRouter(); const [section, setSection] = useState(initialSection); const [sidebarOpen, setSidebarOpen] = useState(false); const [stats, setStats] = useState<AdminStats>({ users: 0, courses: 0, questions: 0, attempts: 0, pending: 0 }); const [courses, setCourses] = useState<AdminCourse[]>([]); const [requests, setRequests] = useState<AdminRequest[]>([]); const [recentUsers, setRecentUsers] = useState<{ username: string; matriculationNumber: string; createdAt: string }[]>([]); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [toast, setToast] = useState(""); const [courseForm, setCourseForm] = useState({ code: "", title: "", description: "" }); const [importForm, setImportForm] = useState({ courseId: "", year: "2026", csv: "" }); const [importErrors, setImportErrors] = useState<string[]>([]); const [users, setUsers] = useState<{ username: string; matriculationNumber: string; phoneNumber: string | null; createdAt: string; isActive: boolean }[]>([]); const [userSearch, setUserSearch] = useState(""); const [leaderboard, setLeaderboard] = useState<{ username: string; average: number; attempts: number }[]>([]);
   async function load() { const res = await adminFetch("/api/admin/dashboard"); if (res.ok) { setStats(res.data.stats); setRecentUsers(res.data.recentUsers); setRequests(res.data.requests); } const cr = await adminFetch("/api/admin/courses"); if (cr.ok) setCourses(cr.data.courses); }
   useEffect(() => { const timer = window.setTimeout(() => { load().catch(() => router.push("/admin/login")); }, 0); return () => window.clearTimeout(timer); }, [router]);
   useEffect(() => {
@@ -50,9 +46,13 @@ export default function AdminDashboardPage({ initialSection = "overview" }: { in
   async function importCsv() {
     try {
       const res = await adminFetch("/api/admin/import", { method: "POST", body: JSON.stringify(importForm) });
-      if (!res.ok) throw new Error(res.data.error || "Question import failed.");
+      if (!res.ok) {
+        setImportErrors(Array.isArray(res.data.errors) ? res.data.errors : []);
+        throw new Error(getImportErrorMessage(res.data, "Question import failed."));
+      }
+      setImportErrors([]);
       setImportForm((current) => ({ ...current, csv: "" }));
-      notify(`${res.data.imported} questions imported successfully${res.data.invalid ? ` · ${res.data.invalid} invalid rows skipped` : ""}.`);
+      notify(`${res.data.imported} questions imported successfully${res.data.invalid ? ` · ${res.data.invalid} invalid rows skipped: ${(res.data.errors ?? []).join(" ")}` : ""}.`);
       load().catch(() => notify("Questions imported, but dashboard data could not be refreshed."));
     } catch (error) { notify(error instanceof Error ? error.message : "Question import failed."); }
   }
@@ -82,7 +82,7 @@ export default function AdminDashboardPage({ initialSection = "overview" }: { in
         {section === "courses" && <AdminContentManager section="courses" notify={notify}/>}
         {section === "summaries" && <AdminContentManager section="summaries" notify={notify}/>}
         {section === "questions" && <AdminContentManager section="questions" notify={notify}/>}
-        {section === "banks" && <BanksSection courses={courses} form={importForm} setForm={setImportForm} onImport={importCsv} prompt={prompt}/>}
+        {section === "banks" && <><BanksSection courses={courses} form={importForm} setForm={setImportForm} onImport={importCsv} prompt={csvPrompt}/>{importErrors.length > 0 && <div className="admin-import-errors" role="alert"><strong>Import needs attention:</strong><ul>{importErrors.map((message, index) => <li key={`${index}-${message}`}>{message}</li>)}</ul></div>}</>}
         {section === "modules" && <ModulesSection courses={courses} onModules={(id) => router.push(`/admin/modules/${id}`)}/>}
         {section === "users" && <UsersSection users={users} query={userSearch} setQuery={setUserSearch}/>}
         {section === "requests" && <RequestsSection requests={requests} onUpdate={updateRequest}/>}

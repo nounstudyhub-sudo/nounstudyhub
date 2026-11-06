@@ -24,8 +24,10 @@ Switching from PostgreSQL does not copy existing records. Export/import any data
 | `MONGODB_DB`        | No       | Database override when the URI omits `/database` (default `test`)    |
 | `ADMIN_USERNAME`    | Yes      | Admin console username                                                |
 | `ADMIN_PASSWORD`    | Yes      | Admin console password — plain text or bcrypt hash                    |
-| `GEMINI_API_KEY`    | No       | Server-only Google Gemini key for AI routes                          |
-| `AI_DAILY_LIMIT`    | No       | Authenticated user's shared daily AI request limit (default 100)    |
+| `OPENROUTER_API_KEY` | No      | Server-only OpenRouter API key for AI routes                         |
+| `OPENROUTER_MODEL` | No       | OpenRouter model ID (default `openrouter/auto`)                      |
+| `OPENROUTER_SITE_URL` | No     | Public site URL sent for OpenRouter app attribution                   |
+| `AI_DAILY_LIMIT`    | No       | Authenticated user's shared daily AI request limit (default 100)     |
 
 Set admin credentials in a private `.env` file locally and in Render's environment settings. The login route intentionally has no hard-coded fallback credentials.
 
@@ -40,7 +42,7 @@ Set admin credentials in a private `.env` file locally and in Render's environme
    - `MONGODB_URI` (the MongoDB connection string)
    - `MONGODB_DB` (the database containing NounStudyHub collections; required when the URI has no database path)
    - `ADMIN_USERNAME`, `ADMIN_PASSWORD`
-   - `GEMINI_API_KEY`, `AI_DAILY_LIMIT` (optional)
+   - `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_SITE_URL`, `AI_DAILY_LIMIT` (optional)
 4. Run `npm run db:create` with the Render MongoDB environment values to create the required indexes. Mongoose creates collections when records are first written; no table migration step is required.
 5. (Optional) To load demo courses and questions, run `npm run db:setup` with `MONGODB_URI` set for the target cluster.
 
@@ -54,7 +56,7 @@ The current app uses database-backed session tokens rather than JWT and has no p
 
 ## AI API foundations
 
-The authenticated, server-only AI routes are `/api/ai/explain`, `/api/ai/chat`, `/api/ai/performance`, and `/api/ai/practice`. They share an atomic per-user UTC-day limit stored in MongoDB; unauthenticated requests are rejected before usage is read or incremented. Configure `GEMINI_API_KEY` in the server environment only. Practice suggestions are returned to the caller and are not written to the CBT question bank or mock attempts.
+The authenticated, server-only AI routes are `/api/ai/explain`, `/api/ai/chat`, `/api/ai/performance`, and `/api/ai/practice`. They share an atomic per-user UTC-day limit stored in MongoDB; unauthenticated requests are rejected before usage is read or incremented. Configure `OPENROUTER_API_KEY` in the server environment only. `OPENROUTER_MODEL` optionally selects a model (default: `openrouter/auto`), and `OPENROUTER_SITE_URL` optionally sets the public site URL for OpenRouter attribution. Practice suggestions are returned to the caller and are not written to the CBT question bank or mock attempts.
 
 ## Scripts
 
