@@ -371,17 +371,17 @@ export function AiPracticePanel({
             </div>}
           </div>
         </div>
+        <div className="question-footer ai-practice-footer">
+          <button className="button button-light" type="button" disabled={currentQuestion === 0} onClick={() => setCurrentQuestion((value) => Math.max(0, value - 1))}>← Previous</button>
+          <button className="button ai-practice-submit-button" type="button" onClick={submitPractice} disabled={submitting}>{submitting ? "Saving results…" : "Submit Practice"}</button>
+          <button className="button ai-practice-next-button" type="button" disabled={currentQuestion === questions.length - 1} onClick={() => setCurrentQuestion((value) => Math.min(questions.length - 1, value + 1))}>Next →</button>
+        </div>
         <div className="ai-practice-palette ai-practice-palette-mobile">
           <strong>Questions</strong>
           <small>{answeredCount} of {questions.length} answered</small>
           <div className="question-dots">
             {questions.map((item, index) => <button type="button" key={index} aria-label={`Go to question ${index + 1}${answers[index]?.trim() ? ", answered" : ""}`} aria-current={currentQuestion === index ? "step" : undefined} className={`${currentQuestion === index ? "current" : ""} ${answers[index]?.trim() ? "answered" : ""}`} onClick={() => setCurrentQuestion(index)}>{index + 1}</button>)}
           </div>
-        </div>
-        <div className="question-footer ai-practice-footer">
-          <button className="button button-light" type="button" disabled={currentQuestion === 0} onClick={() => setCurrentQuestion((value) => Math.max(0, value - 1))}>← Previous</button>
-          <button className="button ai-practice-submit-button" type="button" onClick={submitPractice} disabled={submitting}>{submitting ? "Saving results…" : "Submit Practice"}</button>
-          <button className="button ai-practice-next-button" type="button" disabled={currentQuestion === questions.length - 1} onClick={() => setCurrentQuestion((value) => Math.min(questions.length - 1, value + 1))}>Next →</button>
         </div>
       </main>
       </div>

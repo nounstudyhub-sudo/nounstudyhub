@@ -1,5 +1,6 @@
-.flagged-summary { margin-bottom: 20px; }
-.flagged-summary .admin-stat { max-width: 290px; }
+.flagged-summary { grid-template-columns: 1fr; margin-bottom: 20px; }
+.flagged-summary .admin-stat { max-width: none; }
+.admin-stat-icon.red { background: #fff0f0; color: #b14d56; }
 .flagged-error { margin-bottom: 16px; }
 .flagged-question-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
 .flagged-question-card { display: flex; flex-direction: column; min-height: 220px; cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
@@ -36,4 +37,7 @@
   .flagged-modal { padding: 19px; }
   .flagged-card-actions { justify-content: stretch; }
   .flagged-card-actions button { flex: 1; }
+}
+@media (min-width: 621px) {
+  .flagged-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

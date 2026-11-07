@@ -165,8 +165,10 @@ FlaggedQuestionSchema.index({ status: 1, createdAt: -1 }, { name: "flagged_quest
 const NotificationSchema = new Schema({
   userId: { type: objectId, ref: "User", default: null, index: true },
   type: { type: String, required: true, default: "student", maxlength: 24 },
+  title: { type: String, default: null, maxlength: 100 },
   message: { type: String, required: true },
   link: { type: String, default: null, maxlength: 80 },
+  read: { type: Boolean, required: true, default: false },
   readAt: { type: Date, default: null },
   createdAt: { type: Date, required: true, default: Date.now },
 }, commonOptions);

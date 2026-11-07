@@ -6,12 +6,17 @@ async function listFlaggedQuestions() {
   try {
     await requireAdmin();
     await connectToDatabase();
-    const rows = await FlaggedQuestion.find()
-      .sort({ createdAt: -1 })
-      .populate("questionId")
-      .populate("courseId", "code title")
-      .populate("userId", "username matriculationNumber")
-      .lean();
+    const [rows, pendingCount, dismissedCount, deletedCount] = await Promise.all([
+      FlaggedQuestion.find()
+        .sort({ createdAt: -1 })
+        .populate("questionId")
+        .populate("courseId", "code title")
+        .populate("userId", "username matriculationNumber")
+        .lean(),
+      FlaggedQuestion.countDocuments({ status: "pending" }),
+      FlaggedQuestion.countDocuments({ status: "dismissed" }),
+      FlaggedQuestion.countDocuments({ status: "deleted" }),
+    ]);
     const flaggedQuestions = rows.map((row) => {
       const populated = row as unknown as {
         _id: unknown;
@@ -32,7 +37,7 @@ async function listFlaggedQuestions() {
         createdAt: populated.createdAt,
       };
     });
-    return Response.json({ flaggedQuestions });
+    return Response.json({ flaggedQuestions, pendingCount, dismissedCount, deletedCount });
   } catch { return Response.json({ error: "Admin access required." }, { status: 401 }); }
 }
 

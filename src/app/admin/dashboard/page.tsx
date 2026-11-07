@@ -8,6 +8,7 @@ import { getImportErrorMessage } from "@/lib/question-csv";
 import FlaggedQuestionManager from "../flagged-question-manager";
 
 type AdminStats = { users: number; courses: number; questions: number; attempts: number; pending: number; flaggedPending: number };
+type FlaggedQuestionCounts = { pendingCount: number; dismissedCount: number; deletedCount: number };
 type AdminCourse = { id: string; code: string; title: string; description: string; questionCount: number };
 type AdminRequest = { request: { id: string; requestText: string; status: string; createdAt: string; userId: string }; user: { username: string } };
 const adminNav = [{ key: "overview", label: "Dashboard", icon: "▦" }, { key: "users", label: "Users", icon: "◯" }, { key: "leaderboard", label: "Leaderboard", icon: "↗" }, { key: "courses", label: "Courses", icon: "▤" }, { key: "summaries", label: "Summaries", icon: "✦" }, { key: "questions", label: "Questions", icon: "≡" }, { key: "flagged-questions", label: "Flagged Questions", icon: "⚑" }, { key: "requests", label: "Requested Courses", icon: "＋" }];
@@ -20,13 +21,13 @@ async function adminFetch(url: string, options?: RequestInit) {
   return { ok: response.ok, status: response.status, data };
 }
 
-export default function AdminDashboardPage({ initialSection = "overview" }: { initialSection?: string }) { const router = useRouter(); const [section, setSection] = useState(initialSection); const [sidebarOpen, setSidebarOpen] = useState(false); const [stats, setStats] = useState<AdminStats>({ users: 0, courses: 0, questions: 0, attempts: 0, pending: 0, flaggedPending: 0 }); const [courses, setCourses] = useState<AdminCourse[]>([]); const [requests, setRequests] = useState<AdminRequest[]>([]); const [recentUsers, setRecentUsers] = useState<{ username: string; matriculationNumber: string; createdAt: string }[]>([]); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [toast, setToast] = useState(""); const [courseForm, setCourseForm] = useState({ code: "", title: "", description: "" }); const [importForm, setImportForm] = useState({ courseId: "", year: "2026", csv: "" }); const [importErrors, setImportErrors] = useState<string[]>([]); const [users, setUsers] = useState<{ username: string; matriculationNumber: string; phoneNumber: string | null; createdAt: string; isActive: boolean }[]>([]); const [userSearch, setUserSearch] = useState(""); const [leaderboard, setLeaderboard] = useState<{ username: string; average: number; attempts: number }[]>([]);
+export default function AdminDashboardPage({ initialSection = "overview" }: { initialSection?: string }) { const router = useRouter(); const [section, setSection] = useState(initialSection); const [sidebarOpen, setSidebarOpen] = useState(false); const [stats, setStats] = useState<AdminStats>({ users: 0, courses: 0, questions: 0, attempts: 0, pending: 0, flaggedPending: 0 }); const [courses, setCourses] = useState<AdminCourse[]>([]); const [requests, setRequests] = useState<AdminRequest[]>([]); const [recentUsers, setRecentUsers] = useState<{ username: string; matriculationNumber: string; createdAt: string }[]>([]); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [unreadNotificationCount, setUnreadNotificationCount] = useState(0); const [toast, setToast] = useState(""); const [courseForm, setCourseForm] = useState({ code: "", title: "", description: "" }); const [importForm, setImportForm] = useState({ courseId: "", year: "2026", csv: "" }); const [importErrors, setImportErrors] = useState<string[]>([]); const [users, setUsers] = useState<{ username: string; matriculationNumber: string; phoneNumber: string | null; createdAt: string; isActive: boolean }[]>([]); const [userSearch, setUserSearch] = useState(""); const [leaderboard, setLeaderboard] = useState<{ username: string; average: number; attempts: number }[]>([]);
   async function load() { const res = await adminFetch("/api/admin/dashboard"); if (res.ok) { setStats(res.data.stats); setRecentUsers(res.data.recentUsers); setRequests(res.data.requests); } const cr = await adminFetch("/api/admin/courses"); if (cr.ok) setCourses(cr.data.courses); }
   useEffect(() => { const timer = window.setTimeout(() => { load().catch(() => router.push("/admin/login")); }, 0); return () => window.clearTimeout(timer); }, [router]);
   useEffect(() => {
     const refresh = () => {
       adminFetch("/api/admin/dashboard").then((res) => { if (res.ok) setStats(res.data.stats); }).catch(() => undefined);
-      adminFetch("/api/notifications").then((res) => { if (res.ok) setNotifications(res.data.notifications || []); }).catch(() => undefined);
+      adminFetch("/api/notifications").then((res) => { if (res.ok) { setNotifications(res.data.notifications || []); setUnreadNotificationCount(Number(res.data.unreadCount) || 0); } }).catch(() => undefined);
     };
     const initial = window.setTimeout(refresh, 0);
     const interval = window.setInterval(refresh, 10000);
@@ -34,8 +35,8 @@ export default function AdminDashboardPage({ initialSection = "overview" }: { in
   }, []);
   useEffect(() => { if (section === "users") adminFetch("/api/admin/users").then((res) => { if (res.ok) setUsers(res.data.users || []); }).catch(() => undefined); if (section === "leaderboard") adminFetch("/api/admin/leaderboard").then((res) => { if (res.ok) setLeaderboard(res.data.leaderboard || []); }).catch(() => undefined); if (section === "requests") adminFetch("/api/admin/requests").then((res) => { if (res.ok) setRequests(res.data.requests || []); }).catch(() => undefined); }, [section]);
   const pageTitle = useMemo(() => adminNav.find((item) => item.key === section)?.label || "Dashboard", [section]);
-  const updateFlaggedPendingCount = useCallback((flaggedPending: number) => {
-    setStats((current) => current.flaggedPending === flaggedPending ? current : { ...current, flaggedPending });
+  const updateFlaggedCounts = useCallback(({ pendingCount }: FlaggedQuestionCounts) => {
+    setStats((current) => current.flaggedPending === pendingCount ? current : { ...current, flaggedPending: pendingCount });
   }, []);
   function notify(message: string) { setToast(message); setTimeout(() => setToast(""), 3200); }
   async function createCourse() {
@@ -69,7 +70,19 @@ export default function AdminDashboardPage({ initialSection = "overview" }: { in
       load().catch(() => notify(`Request ${status.toLowerCase()}, but dashboard data could not be refreshed.`));
     } catch (error) { notify(error instanceof Error ? error.message : `Could not ${status.toLowerCase()} request.`); }
   }
-  async function selectNotification(notification: NotificationItem) { if (!notification.readAt) { const res = await adminFetch("/api/notifications", { method: "PATCH", body: JSON.stringify({ id: notification.id }) }); if (res.ok) setNotifications((current) => current.map((item) => item.id === notification.id ? res.data.notification : item)); } if (notification.link) router.push(notification.link); }
+  async function selectNotification(notification: NotificationItem) {
+    try {
+      if (!notification.readAt && !notification.read) {
+        const res = await adminFetch("/api/notifications", { method: "PATCH", body: JSON.stringify({ id: notification.id }) });
+        if (!res.ok) throw new Error(res.data.error || "Could not mark notification as read.");
+        setNotifications((current) => current.map((item) => item.id === notification.id ? res.data.notification : item));
+        setUnreadNotificationCount(Number(res.data.unreadCount) || 0);
+      }
+      if (notification.link) router.push(notification.link);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Could not open this notification.");
+    }
+  }
   function logout() { adminFetch("/api/auth/logout", { method: "POST" }).catch(() => undefined).finally(() => router.push("/admin/login")); }
   return <div className="admin-shell">
     <aside className={`admin-sidebar ${sidebarOpen ? "open" : ""}`}>
@@ -79,14 +92,14 @@ export default function AdminDashboardPage({ initialSection = "overview" }: { in
       <div className="admin-sidebar-bottom"><button onClick={() => notify("Settings are coming soon.")}><span>⚙</span>Settings</button><button onClick={logout}><span>↗</span>Log out</button></div>
     </aside>
     <main className="admin-main">
-      <header className="admin-header"><button className="admin-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open menu">☰</button><div><span className="admin-breadcrumb">ADMIN / {pageTitle.toUpperCase()}</span><h1>{pageTitle}</h1></div><div className="admin-header-actions"><NotificationCenter variant="admin" notifications={notifications} onSelect={(notification) => void selectNotification(notification)}/><span className="admin-user-label">Khalifa</span><button className="admin-exit-button" aria-label="Log out" title="Log out" onClick={logout}><ExitIcon/></button></div></header>
+      <header className="admin-header"><button className="admin-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open menu">☰</button><div><span className="admin-breadcrumb">ADMIN / {pageTitle.toUpperCase()}</span><h1>{pageTitle}</h1></div><div className="admin-header-actions"><NotificationCenter variant="admin" notifications={notifications} unreadCountOverride={unreadNotificationCount} onSelect={(notification) => void selectNotification(notification)}/><span className="admin-user-label">Khalifa</span><button className="admin-exit-button" aria-label="Log out" title="Log out" onClick={logout}><ExitIcon/></button></div></header>
       {toast && <div className="admin-toast">✓ {toast}</div>}
       <div className="admin-content">
         {section === "overview" && <Overview stats={stats} recentUsers={recentUsers} requests={requests} setSection={setSection}/>}
         {section === "courses" && <AdminContentManager section="courses" notify={notify}/>}
         {section === "summaries" && <AdminContentManager section="summaries" notify={notify}/>}
         {section === "questions" && <AdminContentManager section="questions" notify={notify}/>}
-        {section === "flagged-questions" && <FlaggedQuestionManager onPendingCountChange={updateFlaggedPendingCount}/>}
+        {section === "flagged-questions" && <FlaggedQuestionManager onCountsChange={updateFlaggedCounts}/>}
         {section === "banks" && <><BanksSection courses={courses} form={importForm} setForm={setImportForm} onImport={importCsv} prompt={csvPrompt}/>{importErrors.length > 0 && <div className="admin-import-errors" role="alert"><strong>Import needs attention:</strong><ul>{importErrors.map((message, index) => <li key={`${index}-${message}`}>{message}</li>)}</ul></div>}</>}
         {section === "modules" && <ModulesSection courses={courses} onModules={(id) => router.push(`/admin/modules/${id}`)}/>}
         {section === "users" && <UsersSection users={users} query={userSearch} setQuery={setUserSearch}/>}

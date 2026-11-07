@@ -22,6 +22,8 @@ type FlaggedQuestionItem = {
   user: { id: string; username: string; matriculationNumber: string } | null;
 };
 
+type FlaggedQuestionCounts = { pendingCount: number; dismissedCount: number; deletedCount: number };
+
 async function adminFlagRequest(url: string, options?: RequestInit) {
   const response = await fetch(url, {
     ...options,
@@ -32,7 +34,7 @@ async function adminFlagRequest(url: string, options?: RequestInit) {
   return data;
 }
 
-export default function FlaggedQuestionManager({ onPendingCountChange }: { onPendingCountChange: (count: number) => void }) {
+export default function FlaggedQuestionManager({ onCountsChange }: { onCountsChange: (counts: FlaggedQuestionCounts) => void }) {
   const [items, setItems] = useState<FlaggedQuestionItem[]>([]);
   const [selected, setSelected] = useState<FlaggedQuestionItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,8 +45,13 @@ export default function FlaggedQuestionManager({ onPendingCountChange }: { onPen
     const data = await adminFlagRequest("/api/admin/flagged-questions", { method: "POST" });
     const flaggedQuestions = Array.isArray(data.flaggedQuestions) ? data.flaggedQuestions as FlaggedQuestionItem[] : [];
     setItems(flaggedQuestions);
-    onPendingCountChange(flaggedQuestions.filter((item) => item.status === "pending").length);
-  }, [onPendingCountChange]);
+    const counts = {
+      pendingCount: Number(data.pendingCount) || 0,
+      dismissedCount: Number(data.dismissedCount) || 0,
+      deletedCount: Number(data.deletedCount) || 0,
+    };
+    onCountsChange(counts);
+  }, [onCountsChange]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -73,6 +80,8 @@ export default function FlaggedQuestionManager({ onPendingCountChange }: { onPen
   }
 
   const pendingCount = items.filter((item) => item.status === "pending").length;
+  const dismissedCount = items.filter((item) => item.status === "dismissed").length;
+  const deletedCount = items.filter((item) => item.status === "deleted").length;
   const question = selected?.questionId;
 
   return <>
@@ -81,6 +90,8 @@ export default function FlaggedQuestionManager({ onPendingCountChange }: { onPen
     </div>
     <div className="admin-stat-grid flagged-summary">
       <div className="admin-stat"><span className="admin-stat-icon orange">⚑</span><small>Pending flags</small><strong>{pendingCount}</strong><p>Questions awaiting review</p></div>
+      <div className="admin-stat"><span className="admin-stat-icon blue">✓</span><small>Dismissed</small><strong>{dismissedCount}</strong><p>Questions reviewed &amp; kept</p></div>
+      <div className="admin-stat"><span className="admin-stat-icon red">×</span><small>Deleted</small><strong>{deletedCount}</strong><p>Questions removed from bank</p></div>
     </div>
     {error && <div className="admin-import-errors flagged-error" role="alert">{error}</div>}
     {loading ? <div className="admin-panel admin-empty">Loading flagged questions…</div> : items.length ? <div className="flagged-question-grid">
@@ -92,8 +103,8 @@ export default function FlaggedQuestionManager({ onPendingCountChange }: { onPen
           <span>Reported by {item.user?.username ?? "Unknown student"}</span>
         </div>
         {item.status === "pending" && <div className="flagged-card-actions" onClick={(event) => event.stopPropagation()}>
-          <button type="button" className="flagged-dismiss-button" disabled={pendingId !== null} onClick={() => void resolve(item, "dismissed")}>{pendingId === item.id ? "Saving…" : "Decline / Dismiss"}</button>
-          <button type="button" className="flagged-delete-button" disabled={pendingId !== null} onClick={() => void resolve(item, "deleted")}>{pendingId === item.id ? "Saving…" : "Approve / Delete"}</button>
+          <button type="button" className="flagged-dismiss-button" disabled={pendingId !== null} onClick={() => void resolve(item, "dismissed")}>{pendingId === item.id ? "Saving…" : "Dismiss"}</button>
+          <button type="button" className="flagged-delete-button" disabled={pendingId !== null} onClick={() => void resolve(item, "deleted")}>{pendingId === item.id ? "Saving…" : "Delete"}</button>
         </div>}
       </article>)}
     </div> : <div className="admin-panel admin-empty">No flagged questions have been submitted.</div>}
@@ -113,7 +124,7 @@ export default function FlaggedQuestionManager({ onPendingCountChange }: { onPen
         </div>}
         <div className="flagged-modal-actions">
           <button type="button" className="flagged-dismiss-button" disabled={pendingId !== null || selected.status !== "pending"} onClick={() => void resolve(selected, "dismissed")}>{pendingId === selected.id ? "Saving…" : "Dismiss"}</button>
-          <button type="button" className="flagged-delete-button" disabled={pendingId !== null || selected.status !== "pending"} onClick={() => void resolve(selected, "deleted")}>{pendingId === selected.id ? "Saving…" : "Quick Delete"}</button>
+          <button type="button" className="flagged-delete-button" disabled={pendingId !== null || selected.status !== "pending"} onClick={() => void resolve(selected, "deleted")}>{pendingId === selected.id ? "Saving…" : "Delete"}</button>
         </div>
       </section>
     </div>}

@@ -442,22 +442,23 @@ export function StudentProfile({ user, onSave, onDelete, onViewActivity }: {
   </div>;
 }
 
-export type NotificationItem = { id: string; message: string; createdAt: string; readAt: string | null; link?: string | null };
+export type NotificationItem = { id: string; type?: string; title?: string | null; message: string; createdAt: string; read?: boolean; readAt: string | null; link?: string | null };
 
-export function NotificationCenter({ notifications, onSelect, variant }: {
+export function NotificationCenter({ notifications, onSelect, variant, unreadCountOverride }: {
   notifications: NotificationItem[];
   onSelect: (notification: NotificationItem) => void;
   variant: "student" | "admin";
+  unreadCountOverride?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const unreadCount = notifications.filter((notification) => !notification.readAt).length;
+  const unreadCount = unreadCountOverride ?? notifications.filter((notification) => !notification.readAt && !notification.read).length;
   return <div className={`notification-center ${variant}`}>
     <button className="notification-center-trigger" aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"} aria-expanded={open} onClick={() => setOpen((value) => !value)}>
       <NotificationBellIcon/>{unreadCount > 0 && <b>{unreadCount > 99 ? "99+" : unreadCount}</b>}
     </button>
     {open && <section className="notification-center-panel" aria-label="Notifications">
       <header><div><strong>Notifications</strong><small>{unreadCount ? `${unreadCount} unread` : "All caught up"}</small></div><button aria-label="Close notifications" onClick={() => setOpen(false)}>×</button></header>
-      <div className="notification-center-list">{notifications.length ? notifications.map((notification) => <button key={notification.id} className={`notification-center-item ${notification.readAt ? "read" : "unread"}`} onClick={() => { setOpen(false); onSelect(notification); }}><span className="notification-center-dot"/><span><strong>{notification.message}</strong><small>{new Date(notification.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</small></span></button>) : <p className="notification-center-empty">You&apos;re all caught up.</p>}</div>
+      <div className="notification-center-list">{notifications.length ? notifications.map((notification) => <button key={notification.id} className={`notification-center-item ${notification.readAt || notification.read ? "read" : "unread"}`} onClick={() => { setOpen(false); onSelect(notification); }}><span className="notification-center-dot"/><span><strong>{notification.title || notification.message}</strong>{notification.title && <small>{notification.message}</small>}<small>{new Date(notification.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</small></span></button>) : <p className="notification-center-empty">You&apos;re all caught up.</p>}</div>
     </section>}
   </div>;
 }
