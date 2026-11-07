@@ -44,6 +44,13 @@
 .admin-modal h2 { margin: 0 30px 4px 0; color: #26382c; font-size: 18px; }
 .admin-modal-close { position: absolute; top: 13px; right: 13px; width: 30px; height: 30px; border: 0; border-radius: 4px; background: #f1f6f2; color: #637168; font-size: 19px; cursor: pointer; }
 .admin-modal-submit { align-self: flex-start; padding: 10px 15px; border: 0; border-radius: 5px; background: #08714b; color: white; font-size: 11px; font-weight: 700; cursor: pointer; }
+.admin-delete-confirm-modal { width: min(440px, 100%); }
+.admin-delete-confirm-modal p { margin: 10px 0 22px; color: #68776d; font-size: 12px; line-height: 1.6; }
+.admin-delete-confirm-actions { display: flex; justify-content: flex-end; gap: 9px; }
+.admin-delete-confirm-actions button { min-width: 82px; padding: 10px 15px; border: 1px solid #dce6de; border-radius: 5px; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.admin-delete-confirm-cancel { background: white; color: #405046; }
+.admin-delete-confirm-submit { border-color: #b83d36 !important; background: #b83d36; color: white; }
+.admin-delete-confirm-actions button:disabled { opacity: .6; cursor: not-allowed; }
 .admin-unit-content { margin: 15px 0 20px; color: #405046; font-size: 13px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 620px) { .admin-question-import { grid-template-columns: 1fr; padding: 12px; }.admin-question-import .admin-question-csv, .admin-question-import .admin-single-question, .admin-prompt-helper, .admin-question-import > button { grid-column: 1; }.admin-prompt-helper { grid-template-columns: 1fr; }.admin-prompt-helper textarea { grid-column: 1; }.admin-modal { padding: 20px; } }
 .admin-question-mode { display: inline-flex; width: fit-content; gap: 3px; padding: 3px; border: 1px solid #dce6de; border-radius: 6px; background: #f3f8f4; }

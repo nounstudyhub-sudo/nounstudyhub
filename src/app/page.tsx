@@ -318,12 +318,15 @@ function Setup({ course, onBack, onStart }: { course: Course; onBack: () => void
   return <div className="setup-page"><button className="back-link" onClick={onBack}><Icon name="arrow"/> Back to {course.code}</button><div className="setup-wrap"><div className="eyebrow">MOCK SETUP</div><h1>Ready when you are.</h1><p>Set your pace for <strong>{course.code} · {course.title}</strong>.</p>{available < 10 && <div className="setup-warning"><Icon name="check"/> Only {available} question{available === 1 ? "" : "s"} available for this course — your mock will use {available}.</div>}<div className="setup-grid"><div className="setup-card"><span className="setup-number">01</span><h2>How many questions?</h2><p>Choose a question count that matches your study time.</p><div className="time-options question-options">{choices.map((count) => <button type="button" disabled={count > available} className={countText === String(count) ? "selected" : ""} onClick={() => setCountText(String(count))} key={count}><span>{count}</span><small>{count === 10 ? "Quick drill" : count === 70 ? "Recommended" : count === 100 ? "Full bank" : "Question set"} · questions</small></button>)}</div><label className="custom-input">Custom<input type="number" min="1" max={available} value={countText} onChange={(event) => setCountText(event.target.value)} onBlur={normalizeCount}/>{!countValid && <span className="availability no">Enter 1–{available}</span>}</label></div><div className="setup-card"><span className="setup-number">02</span><h2>Set your timer</h2><p>Take the time you need. You can submit early anytime.</p><div className="time-options">{[[10,10],[20,20],[50,45],[70,60],[100,90]].map(([questions, minutes]) => <button type="button" className={minText === String(minutes) && countText === String(Math.min(questions, available)) ? "selected" : ""} onClick={() => { setCountText(String(Math.min(questions, available))); setMinText(String(minutes)); }} key={minutes}><span>{minutes}</span><small>minutes · {Math.min(questions, available)} questions</small></button>)}</div><label className="custom-input">Custom time (minutes)<input type="number" min="1" value={minText} onChange={(event) => setMinText(event.target.value)} onBlur={normalizeMin}/>{!minValid && <span className="availability no">Enter 1 or more</span>}</label></div><div className="setup-card"><span className="setup-number">03</span><h2>Question type</h2><p>Choose how you want to practice.</p><div className="time-options question-type-options">{([["MCQ", "Multiple Choice (MCQ)"], ["FBQ", "Fill in the Blank (FBQ)"], ["MIXED", "Mixed"]] as const).map(([value, label]) => <button type="button" aria-pressed={questionType === value} className={questionType === value ? "selected" : ""} onClick={() => setQuestionType(value)} key={value}><span>{label}</span></button>)}</div></div></div><div className="setup-footer"><div><Icon name="check"/><span><strong>Questions are randomly selected</strong><small>Correct answers stay hidden until you submit.</small></span></div><Button onClick={() => onStart(parsedCount, parsedMin, questionType)} disabled={!countValid || !minValid}>Start mock <Icon name="arrow"/></Button></div></div></div>;
 }
 
-function MockScreen({ course, questions, durationMinutes, onSubmit }: { course: Course; questions: MockQuestion[]; durationMinutes: number; onSubmit: (answers: Record<string, string>, timeUsed: number) => void }) {
+function MockScreen({ course, questions, durationMinutes, userId, initialFlaggedQuestionIds, onSubmit }: { course: Course; questions: MockQuestion[]; durationMinutes: number; userId: string; initialFlaggedQuestionIds: string[]; onSubmit: (answers: Record<string, string>, timeUsed: number) => void }) {
   const durationSeconds = Math.max(1, Math.floor(durationMinutes * 60));
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [seconds, setSeconds] = useState(durationSeconds);
   const [confirm, setConfirm] = useState(false);
+  const [flaggedQuestionIds, setFlaggedQuestionIds] = useState<string[]>(initialFlaggedQuestionIds);
+  const [flaggingQuestionIds, setFlaggingQuestionIds] = useState<string[]>([]);
+  const [flagError, setFlagError] = useState("");
   const answersRef = useRef(answers);
   const secondsRef = useRef(durationSeconds);
   const submittedRef = useRef(false);
@@ -361,6 +364,23 @@ function MockScreen({ course, questions, durationMinutes, onSubmit }: { course: 
       answersRef.current = next;
       return next;
     });
+  }
+
+  async function flagQuestion(questionId: string) {
+    if (!userId || flaggedQuestionIds.includes(questionId) || flaggingQuestionIds.includes(questionId)) return;
+    setFlagError("");
+    setFlaggingQuestionIds((currentIds) => [...currentIds, questionId]);
+    try {
+      await requestJson("/api/mock/flag", {
+        method: "POST",
+        body: JSON.stringify({ questionId, courseId: course.id, userId, reason: "Flagged during mock" }),
+      });
+      setFlaggedQuestionIds((currentIds) => currentIds.includes(questionId) ? currentIds : [...currentIds, questionId]);
+    } catch (error) {
+      setFlagError(error instanceof Error ? error.message : "Could not flag this question.");
+    } finally {
+      setFlaggingQuestionIds((currentIds) => currentIds.filter((id) => id !== questionId));
+    }
   }
 
   if (!question) {
@@ -421,9 +441,23 @@ function MockScreen({ course, questions, durationMinutes, onSubmit }: { course: 
             <span><Icon name="spark" /> Take your time</span>
           </div>
           <div className="question-card">
-            <span className="question-type-label">
-              {question.questionType === "FBQ" ? "FILL IN THE BLANK" : question.questionType === "TF" ? "TRUE / FALSE" : "MULTIPLE CHOICE"}
-            </span>
+            <div className="question-card-heading">
+              <span className="question-type-label">
+                {question.questionType === "FBQ" ? "FILL IN THE BLANK" : question.questionType === "TF" ? "TRUE / FALSE" : "MULTIPLE CHOICE"}
+              </span>
+              <button
+                type="button"
+                className={`mock-question-flag ${flaggedQuestionIds.includes(question.id) ? "flagged" : ""}`}
+                aria-label={flaggedQuestionIds.includes(question.id) ? "Question flagged" : "Flag this question"}
+                aria-pressed={flaggedQuestionIds.includes(question.id)}
+                title={flaggedQuestionIds.includes(question.id) ? "Question flagged" : "Flag question"}
+                disabled={!userId || flaggedQuestionIds.includes(question.id) || flaggingQuestionIds.includes(question.id)}
+                onClick={() => void flagQuestion(question.id)}
+              >
+                {flaggingQuestionIds.includes(question.id) ? <span className="mock-flag-spinner" aria-hidden="true" /> : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1h12l-2.4 4L17 13H5" /></svg>}
+              </button>
+            </div>
+            {flagError && <p className="mock-flag-error" role="alert">{flagError}</p>}
             <h1>{question.question}</h1>
             {question.questionType === "FBQ" ? (
               <label className="fbq-answer">
@@ -462,13 +496,16 @@ function MockScreen({ course, questions, durationMinutes, onSubmit }: { course: 
             <Button variant="light" disabled={current === 0} onClick={() => setCurrent(Math.max(0, current - 1))}>
               ← Previous
             </Button>
-            {current === questions.length - 1 ? (
-              <Button onClick={() => setConfirm(true)}>Submit mock <Icon name="arrow" /></Button>
-            ) : (
-              <Button onClick={() => setCurrent(Math.min(questions.length - 1, current + 1))}>
-                Next question <Icon name="arrow" />
-              </Button>
-            )}
+            <Button className="mock-toolbar-submit" onClick={() => setConfirm(true)}>
+              Submit Mock <Icon name="arrow" />
+            </Button>
+            <Button
+              className="mock-next-button"
+              disabled={current === questions.length - 1}
+              onClick={() => setCurrent((value) => Math.min(questions.length - 1, value + 1))}
+            >
+              Next →
+            </Button>
           </div>
         </main>
       </div>
@@ -534,6 +571,7 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
   const [assistantCourseId, setAssistantCourseId] = useState("");
   const [mockBankYear, setMockBankYear] = useState<number | null>(null);
   const [mockDurationMinutes, setMockDurationMinutes] = useState(20);
+  const [mockFlaggedQuestionIds, setMockFlaggedQuestionIds] = useState<string[]>([]);
   const [appError, setAppError] = useState("");
   const [view, setView] = useState<AppView>(initialAuthMode ?? "landing"); const [authMode, setAuthMode] = useState<"login" | "signup">(initialAuthMode ?? "login"); const [user, setUser] = useState<User | null>(null); const [courses, setCourses] = useState<Course[]>([]); const [coursesLoading, setCoursesLoading] = useState(true); const [coursesError, setCoursesError] = useState(""); const [favorites, setFavorites] = useState<Course[]>([]); const [selectedCourse, setSelectedCourse] = useState<Course>(sampleCourses[0]); const [mockQuestions, setMockQuestions] = useState<MockQuestion[]>([]); const [mockAttemptId, setMockAttemptId] = useState("demo"); const [mockAttemptType, setMockAttemptType] = useState<"PAST_QUESTION" | "AI_PRACTICE">("PAST_QUESTION"); const [mockResult, setMockResult] = useState<{ totalQuestions: number; correctAnswers: number; unanswered: number; percentage: number; timeUsed: number } | null>(null); const [notifications, setNotifications] = useState<NotificationItem[]>([]); const [loading, setLoading] = useState(false);
   useEffect(() => {
@@ -576,7 +614,7 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
     setAppError("");
 
     try {
-      const data = await requestJson<{ attemptId: string; questions: MockQuestion[] }>(
+      const data = await requestJson<{ attemptId: string; questions: MockQuestion[]; flaggedQuestionIds?: string[] }>(
         "/api/mock/start",
         {
           method: "POST",
@@ -592,6 +630,7 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
 
       setMockAttemptId(data.attemptId);
       setMockQuestions(data.questions);
+      setMockFlaggedQuestionIds(data.flaggedQuestionIds ?? []);
       setView("mock");
     } catch {
       const total = Math.max(1, Math.floor(count));
@@ -622,6 +661,7 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
 
       setMockAttemptId("demo");
       setMockQuestions(questions);
+      setMockFlaggedQuestionIds([]);
       setView("mock");
     } finally {
       setLoading(false);
@@ -648,7 +688,7 @@ export default function HomePage({ initialAuthMode }: { initialAuthMode?: "login
     : view === "saved" ? <SavedCourses favorites={favorites} onCourse={openCourse} onMock={startSetup} onFavorite={toggleFavorite} onBrowse={() => setView("courses")}/>
     : view === "course" ? user.role === "student" ? <StudentCourseContent key={selectedCourse.id} course={selectedCourse} onBack={() => setView("courses")} onMock={(year, count) => startSetup(selectedCourse, year ?? null, count ?? selectedCourse.questionCount)}/> : <CourseDetail course={selectedCourse} onBack={() => setView("courses")} onMock={() => startSetup(selectedCourse)} onSummary={() => setView("summary")} onAiChat={() => { setAssistantCourseId(selectedCourse.id); setView("ai-chat"); }} favorite={favorites.some((item) => item.id === selectedCourse.id)} onFavorite={() => toggleFavorite(selectedCourse)}/>
     : view === "setup" ? <Setup course={selectedCourse} onBack={() => setView("course")} onStart={startMock}/>
-    : view === "mock" ? (mockQuestions.length ? <MockScreen course={selectedCourse} questions={mockQuestions} durationMinutes={mockDurationMinutes} onSubmit={submitMock}/> : <EmptyState title="No questions available" text="This mock could not be started because there are no questions to load."/>)
+    : view === "mock" ? (mockQuestions.length ? <MockScreen course={selectedCourse} questions={mockQuestions} durationMinutes={mockDurationMinutes} userId={user.id} initialFlaggedQuestionIds={mockFlaggedQuestionIds} onSubmit={submitMock}/> : <EmptyState title="No questions available" text="This mock could not be started because there are no questions to load."/>)
     : view === "result" && mockResult ? <ResultView course={selectedCourse} attemptId={mockAttemptId} attemptType={mockAttemptType} result={mockResult} onReview={() => setView("review")} onBack={() => setView(mockAttemptType === "AI_PRACTICE" ? "ai-practice" : "course")}/>
     : view === "review" ? <ReviewView key={mockAttemptId} course={selectedCourse} attemptId={mockAttemptId} onBack={() => setView("result")} onRetake={() => setView("setup")}/>
     : view === "ai-chat" ? <AiStudyAssistant courses={aiCourses} initialCourseId={assistantCourseId}/>

@@ -8,6 +8,7 @@ import {
   validateQuestionCsv,
 } from "./question-csv";
 import { stripMarkdownAsterisks } from "./ai-text";
+import { prepareAiPracticeQuestions } from "./ai-practice-questions";
 import { inferMockQuestionType, prepareMockQuestion } from "./mock-question-types";
 
 const validQuestion = [
@@ -98,6 +99,25 @@ test("recognizes true/false source records and strips Markdown asterisks from ex
   assert.equal(stripMarkdownAsterisks("You chose **A**. It is *correct*."), "You chose A. It is correct.");
 });
 
+test("AI practice modes transform MCQs into FBQs and preserve true/false questions", () => {
+  const generated = [
+    { questionType: "MCQ" as const, question: "The next best alternative is opportunity cost.", options: { A: "Profit", B: "Opportunity cost", C: "Revenue", D: "Demand" }, correctAnswer: "B", explanation: "You identify the best forgone alternative." },
+    { questionType: "TF" as const, question: "Scarcity exists.", options: { A: "True", B: "False", C: "", D: "" }, correctAnswer: "A", explanation: "You can observe scarcity when resources are limited." },
+  ];
+  const fbqSet = prepareAiPracticeQuestions(generated, "FBQ", 10);
+  const mixedSet = prepareAiPracticeQuestions(generated, "MIXED", 10);
+  const mcqSet = prepareAiPracticeQuestions(generated, "MCQ", 10);
+
+  assert.equal(fbqSet[0].questionType, "FBQ");
+  assert.equal(fbqSet[0].correctAnswer, "Opportunity cost");
+  assert.equal(fbqSet[0].question, "The next best alternative is _____.");
+  assert.equal(fbqSet[1].questionType, "TF");
+  assert.equal(mixedSet[0].questionType, "FBQ");
+  assert.equal(mixedSet[1].questionType, "TF");
+  assert.equal(mcqSet[0].questionType, "MCQ");
+  assert.equal(mcqSet[1].questionType, "TF");
+});
+
 test("rejects missing, reordered, and extra header columns", () => {
   const headers = [...QUESTION_CSV_HEADERS];
   const missing = headers.slice(0, -1);
@@ -172,6 +192,9 @@ test("an unreadable PDF result with only the header contains no importable quest
 });
 
 test("prompt instructs verification of printed keys, fill-in-the-blank conversion, and uncertainty review", () => {
+  assert.match(csvPrompt, /Create and attach a file named question-bank-import\.csv/);
+  assert.match(csvPrompt, /do not ask a follow-up question/i);
+  assert.match(csvPrompt, /return the complete raw CSV as the only response/);
   assert.match(csvPrompt, /bold, dark answer printed beneath each question/);
   assert.match(csvPrompt, /do not blindly trust the printed key/);
   assert.match(csvPrompt, /clearly wrong and.*high confidence/);

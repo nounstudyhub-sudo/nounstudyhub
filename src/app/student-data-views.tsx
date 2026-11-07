@@ -46,7 +46,7 @@ export function StudentDashboard({ user, onView, onCourse, onViewAll, onAttempt,
     {error && <p className="form-error" role="alert">{error}</p>}
     <div className="metric-grid">
       <div className="metric-card"><div className="metric-icon green">✓</div><div><span>Mocks completed</span><strong>{data?.metrics.mocksCompleted ?? "—"}</strong><small>Submitted mock exams</small></div></div>
-      <div className="metric-card"><div className="metric-icon blue">↗</div><div><span>Average score</span><strong>{data ? `${data.metrics.averageScore}%` : "—"}</strong><small>Across completed mocks</small></div></div>
+      <div className="metric-card"><div className="metric-icon blue">↗</div><div><span>Average score</span><strong>{data ? `${data.metrics.averageScore}%` : "—"}</strong><small>Across completed attempts</small></div></div>
       <button className="metric-card clickable" onClick={() => onView("saved")}><div className="metric-icon orange">♡</div><div><span>Saved courses</span><strong>{savedCount}</strong><small>In your study space</small></div></button>
     </div>
     <div className="workspace-grid"><section className="main-column">
@@ -150,8 +150,7 @@ export function StudentCourseContent({ course, onMock, onBack }: { course: Cours
             {data.modules.map((module, index) => <button type="button" className="module-row student-module-row" key={module.id} onClick={() => { setModuleId(module.id); void track(module.id); }}>
               <span className="module-number">{String(index + 1).padStart(2, "0")}</span>
               <div><strong>{module.title}</strong><small>{module.units.length} units</small></div>
-              <span className="module-status">View module</span>
-              <span className="icon" aria-hidden="true">›</span>
+              <span className="module-status">View units</span>
             </button>)}
             {!data.modules.length && <div className="empty-state"><h3>No modules available</h3><p>Course materials will appear here when they are added.</p></div>}
           </div>}

@@ -1,4 +1,8 @@
-const csvPrompt = `Convert the attached question-bank PDF into import-ready CSV. Read selectable text and visually inspect page layout, bold answer lines, and scanned pages. Use OCR for scanned pages when available; if the text or answer cannot be read reliably, mark it for review as described below. Preserve the course code, terminology, and meaning of every question. Correct only obvious OCR mistakes.
+const csvPrompt = `Convert the attached question-bank PDF into an import-ready downloadable CSV file in this response. Do not merely describe the conversion, show a preview, provide instructions, or ask me to request the file in another message.
+
+Create and attach a file named question-bank-import.csv containing the finished CSV. Use any available file or data-analysis tool to create the file. The file itself must contain only the CSV data: no Markdown fences, commentary, title, or extra columns. Do not substitute a code block or prose response for the downloadable file. If you cannot create or attach files in this environment, return the complete raw CSV as the only response so it can be saved directly as question-bank-import.csv; do not ask a follow-up question.
+
+Read selectable text and visually inspect page layout, bold answer lines, and scanned pages. Use OCR for scanned pages when available; if the text or answer cannot be read reliably, mark it for review as described below. Preserve the course code, terminology, and meaning of every question. Correct only obvious OCR mistakes.
 
 Use the bold, dark answer printed beneath each question as its source answer key. Check that answer against reliable subject knowledge; do not blindly trust the printed key. Keep it when it is correct. If it is clearly wrong and you can identify the correction with high confidence, use the verified correct answer instead. If the corrected answer is not among the supplied choices, replace the incorrect choice with it. Never guess or present an uncertain answer as verified.
 
@@ -17,7 +21,7 @@ For every confidently answerable question, output one row:
 If a question or answer is unreadable, ambiguous, or cannot be verified confidently, do not guess. Still include the question if it can be read, but leave correctAnswer empty and begin explanation with "REVIEW REQUIRED:" followed by the specific uncertainty. The importer will reject that row and show its row number so it can be checked manually. Do not mark an uncertain answer as correct.
 
 CSV rules:
-- Return only CSV, with no Markdown fences, commentary, or extra columns.
+- The downloadable file must contain only CSV, with no Markdown fences, commentary, or extra columns.
 - Include the exact header above, then one row per question.
 - Every row must have exactly eight fields.
 - Quote any field containing a comma, double quote, or line break; escape each embedded double quote by doubling it.

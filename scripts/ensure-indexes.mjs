@@ -33,6 +33,10 @@ const indexes = {
   courseViews: [[{ userId: 1, courseId: 1 }, { unique: true, name: "views_user_course_unique" }]],
   studyProgress: [[{ userId: 1, courseId: 1 }, { unique: true, name: "study_progress_user_course_unique" }]],
   courseRequests: [[{ userId: 1, createdAt: -1 }, { name: "requests_user_created" }]],
+  flaggedQuestions: [
+    [{ questionId: 1, userId: 1 }, { unique: true, name: "flagged_question_user_unique" }],
+    [{ status: 1, createdAt: -1 }, { name: "flagged_questions_status_created" }],
+  ],
   notifications: [[{ userId: 1, createdAt: -1 }, { name: "notifications_user_created" }]],
   adminImports: [[{ courseId: 1, bankId: 1 }, { name: "imports_course_bank" }]],
   aiUsage: [

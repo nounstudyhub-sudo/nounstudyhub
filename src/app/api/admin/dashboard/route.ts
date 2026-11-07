@@ -1,17 +1,18 @@
 import { connectToDatabase } from "@/db";
-import { AdminImport, Course, CourseRequest, MockAttempt, Question, User, idString, withId } from "@/db/models";
+import { AdminImport, Course, CourseRequest, FlaggedQuestion, MockAttempt, Question, User, idString, withId } from "@/db/models";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET() {
   try {
     await requireAdmin();
     await connectToDatabase();
-    const [userCount, courseCount, questionCount, attemptCount, pendingCount, recentUserRows, importRows, requestRows] = await Promise.all([
+    const [userCount, courseCount, questionCount, attemptCount, pendingCount, pendingFlagCount, recentUserRows, importRows, requestRows] = await Promise.all([
       User.countDocuments({ role: "student" }),
       Course.countDocuments(),
       Question.countDocuments(),
       MockAttempt.countDocuments(),
       CourseRequest.countDocuments({ status: "Pending" }),
+      FlaggedQuestion.countDocuments({ status: "pending" }),
       User.find({ role: "student" }).sort({ createdAt: -1 }).limit(5).lean(),
       AdminImport.find().sort({ createdAt: -1 }).limit(5).populate("courseId").populate("bankId").lean(),
       CourseRequest.find().sort({ createdAt: -1 }).limit(20).populate("userId", "username").lean(),
@@ -26,6 +27,6 @@ export async function GET() {
       const user = row.userId as unknown as { _id: unknown };
       return { request: { ...withId(row), userId: idString(user._id) }, user: withId(user) };
     });
-    return Response.json({ stats: { users: userCount, courses: courseCount, questions: questionCount, attempts: attemptCount, pending: pendingCount }, recentUsers, imports, requests });
+    return Response.json({ stats: { users: userCount, courses: courseCount, questions: questionCount, attempts: attemptCount, pending: pendingCount, flaggedPending: pendingFlagCount }, recentUsers, imports, requests });
   } catch (error) { return Response.json({ error: error instanceof Error && error.message === "FORBIDDEN" ? "Admin access required." : "Please log in." }, { status: 401 }); }
 }

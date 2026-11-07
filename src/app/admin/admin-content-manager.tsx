@@ -29,6 +29,7 @@ export default function AdminContentManager({ section, notify }: { section: Sect
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
+  const [selectedBankToDelete, setSelectedBankToDelete] = useState<Bank | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [moduleTitle, setModuleTitle] = useState("");
   const [unitForm, setUnitForm] = useState({ title: "", content: "" });
@@ -230,13 +231,20 @@ export default function AdminContentManager({ section, notify }: { section: Sect
     }, "Question import failed.");
   }
 
-  async function deleteBank(bank: Bank) {
-    if (!window.confirm(`Delete the ${bank.year} question bank and all its questions?`)) return;
-    await runMutation(async () => {
+  async function deleteBank() {
+    if (!selectedBankToDelete || saving) return;
+    const bank = selectedBankToDelete;
+    setSaving(true);
+    try {
       await adminRequest(`/api/admin/questions?id=${bank.id}`, { method: "DELETE" });
       setBanks((current) => current.filter((item) => item.id !== bank.id));
       await refreshAfterSave("Question bank deleted.", refreshCourses);
-    }, "Could not delete question bank.");
+      setSelectedBankToDelete(null);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Could not delete question bank.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const heading = section === "courses" ? "Course library" : section === "summaries" ? "Course summaries" : "Questions";
@@ -286,12 +294,22 @@ export default function AdminContentManager({ section, notify }: { section: Sect
           {questionImportErrors.length > 0 && <div className="admin-import-errors" role="alert"><strong>Import needs attention:</strong><ul>{questionImportErrors.map((message, index) => <li key={`${index}-${message}`}>{message}</li>)}</ul></div>}
           <button type="submit" disabled={saving}>{saving ? "Importing…" : `Import question${questionMode === "single" ? "" : "s"}`}</button>
         </form>}
-        <div className="admin-course-list">{banks.map((bank, index) => <article className="admin-course-row" key={bank.id}><div className="admin-course-row-main"><strong>{index + 1}. {bank.year}</strong><small>{bank.questionCount} questions</small></div><button className="admin-icon-button admin-delete-button" aria-label={`Delete ${bank.year} question bank`} title="Delete question bank" onClick={() => void deleteBank(bank)}><TrashIcon/></button></article>)}{!banks.length && <div className="admin-empty">No question banks added yet.</div>}</div>
+        <div className="admin-course-list">{banks.map((bank, index) => <article className="admin-course-row" key={bank.id}><div className="admin-course-row-main"><strong>{index + 1}. {bank.year}</strong><small>{bank.questionCount} questions</small></div><button className="admin-icon-button admin-delete-button" aria-label={`Delete ${bank.year} question bank`} title="Delete question bank" onClick={() => setSelectedBankToDelete(bank)}><TrashIcon/></button></article>)}{!banks.length && <div className="admin-empty">No question banks added yet.</div>}</div>
       </>}
     </>}
     {dialog && <div className="admin-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setDialog(null); }}><section className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title"><button className="admin-modal-close" aria-label="Close dialog" onClick={() => setDialog(null)}>×</button>
       {dialog.mode === "view" ? <><h2 id="admin-modal-title">{dialog.unit?.title}</h2><div className="admin-unit-content">{dialog.unit?.content}</div><button className="admin-modal-submit" onClick={() => setDialog(null)}>Close</button></> : section === "summaries" && selectedModule ? <form onSubmit={saveUnit}><h2 id="admin-modal-title">{dialog.mode === "edit" ? "Edit unit" : "Add unit"}</h2><label>Unit Title<input required maxLength={180} value={unitForm.title} onChange={(event) => setUnitForm({ ...unitForm, title: event.target.value })} /></label><label>Unit Contents<textarea required rows={10} value={unitForm.content} onChange={(event) => setUnitForm({ ...unitForm, content: event.target.value })} /></label><button className="admin-modal-submit" type="submit">Save Unit</button></form> : <form onSubmit={createModule}><h2 id="admin-modal-title">Add module</h2><label>Module title<input required maxLength={160} autoFocus value={moduleTitle} onChange={(event) => setModuleTitle(event.target.value)} placeholder="e.g. Introduction to Business" /></label><button className="admin-modal-submit" type="submit">Save Module</button></form>}
     </section></div>}
     </fieldset>
+    {selectedBankToDelete && <div className="admin-modal-backdrop" onMouseDown={(event) => { if (!saving && event.target === event.currentTarget) setSelectedBankToDelete(null); }}>
+      <section className="admin-modal admin-delete-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-bank-title" aria-describedby="delete-bank-description">
+        <h2 id="delete-bank-title">Delete {selectedBankToDelete.year} question bank and all its questions?</h2>
+        <p id="delete-bank-description">This action cannot be undone.</p>
+        <div className="admin-delete-confirm-actions">
+          <button type="button" className="admin-delete-confirm-cancel" disabled={saving} onClick={() => setSelectedBankToDelete(null)}>Cancel</button>
+          <button type="button" className="admin-delete-confirm-submit" disabled={saving} onClick={() => void deleteBank()}>{saving ? "Deleting…" : "Delete"}</button>
+        </div>
+      </section>
+    </div>}
   </section>;
 }

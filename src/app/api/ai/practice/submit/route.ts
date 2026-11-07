@@ -20,8 +20,8 @@ export async function POST(request: Request) {
     const attemptObjectId = objectIdOrNull(attemptId);
     if (!attemptObjectId) return Response.json({ error: "A valid practice attempt ID is required." }, { status: 400 });
     if (!answers || typeof answers !== "object" || Array.isArray(answers)
-      || !Object.entries(answers).every(([position, answer]) => /^(0|[1-9]\d*)$/.test(position) && ["A", "B", "C", "D"].includes(String(answer)))) {
-      return Response.json({ error: "Answers must map question positions to A, B, C or D." }, { status: 400 });
+      || !Object.entries(answers).every(([position, answer]) => /^(0|[1-9]\d*)$/.test(position) && typeof answer === "string" && answer.length <= 2000)) {
+      return Response.json({ error: "Answers must map question positions to answer text." }, { status: 400 });
     }
 
     await connectToDatabase();
@@ -57,9 +57,15 @@ export async function POST(request: Request) {
         let correctAnswers = 0;
         let unanswered = 0;
         for (const answer of answerRows) {
-          const selected = selectedAnswers[String(answer.position)] ?? null;
+          const supplied = selectedAnswers[String(answer.position)];
+          const selected = answer.questionType === "FBQ"
+            ? typeof supplied === "string" && supplied.trim() ? supplied.trim() : null
+            : ["A", "B", "C", "D"].includes(supplied) ? supplied : null;
           if (!selected) unanswered += 1;
-          if (selected === answer.correctAnswer) correctAnswers += 1;
+          const isCorrect = answer.questionType === "FBQ"
+            ? selected !== null && selected.trim().toLowerCase() === answer.correctAnswer.trim().toLowerCase()
+            : selected === answer.correctAnswer;
+          if (isCorrect) correctAnswers += 1;
           answer.selectedAnswer = selected;
           answer.expiresAt = null;
           await answer.save({ session });

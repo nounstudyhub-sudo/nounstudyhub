@@ -151,6 +151,17 @@ const CourseRequestSchema = new Schema({
   createdAt: { type: Date, required: true, default: Date.now },
 }, commonOptions);
 
+const FlaggedQuestionSchema = new Schema({
+  questionId: { type: objectId, ref: "Question", required: true },
+  courseId: { type: objectId, ref: "Course", required: true },
+  userId: { type: objectId, ref: "User", required: true },
+  reason: { type: String, required: true, maxlength: 160 },
+  status: { type: String, required: true, enum: ["pending", "dismissed", "deleted"], default: "pending" },
+  createdAt: { type: Date, required: true, default: Date.now },
+}, commonOptions);
+FlaggedQuestionSchema.index({ questionId: 1, userId: 1 }, { unique: true, name: "flagged_question_user_unique" });
+FlaggedQuestionSchema.index({ status: 1, createdAt: -1 }, { name: "flagged_questions_status_created" });
+
 const NotificationSchema = new Schema({
   userId: { type: objectId, ref: "User", default: null, index: true },
   type: { type: String, required: true, default: "student", maxlength: 24 },
@@ -189,6 +200,7 @@ export const Favorite = mongoose.models.Favorite || mongoose.model("Favorite", F
 export const CourseView = mongoose.models.CourseView || mongoose.model("CourseView", CourseViewSchema, "courseViews");
 export const StudyProgress = mongoose.models.StudyProgress || mongoose.model("StudyProgress", StudyProgressSchema, "studyProgress");
 export const CourseRequest = mongoose.models.CourseRequest || mongoose.model("CourseRequest", CourseRequestSchema, "courseRequests");
+export const FlaggedQuestion = mongoose.models.FlaggedQuestion || mongoose.model("FlaggedQuestion", FlaggedQuestionSchema, "flaggedQuestions");
 export const Notification = mongoose.models.Notification || mongoose.model("Notification", NotificationSchema, "notifications");
 export const AdminImport = mongoose.models.AdminImport || mongoose.model("AdminImport", AdminImportSchema, "adminImports");
 export const AiUsage = mongoose.models.AiUsage || mongoose.model("AiUsage", AiUsageSchema, "aiUsage");

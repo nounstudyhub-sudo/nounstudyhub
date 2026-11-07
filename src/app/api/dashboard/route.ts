@@ -12,8 +12,20 @@ export async function GET() {
       Favorite.find({ userId: user.id }).sort({ createdAt: -1 }).populate("courseId").lean(),
       MockAttempt.countDocuments({ userId: user.id, submittedAt: { $ne: null }, $or: [{ type: "PAST_QUESTION" }, { type: { $exists: false } }] }),
       MockAttempt.aggregate([
-        { $match: { userId: user.id, submittedAt: { $ne: null }, $or: [{ type: "PAST_QUESTION" }, { type: { $exists: false } }] } },
-        { $group: { _id: null, averageScore: { $avg: "$percentage" } } },
+        { $match: { userId: user.id, submittedAt: { $ne: null }, totalQuestions: { $gt: 0 } } },
+        {
+          $group: {
+            _id: null,
+            averageScore: {
+              $avg: {
+                $multiply: [
+                  { $divide: ["$correctAnswers", "$totalQuestions"] },
+                  100,
+                ],
+              },
+            },
+          },
+        },
       ]),
       StudyProgress.find({ userId: user.id }).sort({ lastStudiedAt: -1 }).limit(1).lean(),
     ]);

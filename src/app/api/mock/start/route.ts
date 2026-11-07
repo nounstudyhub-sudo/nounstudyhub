@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/db";
-import { Course, MockAnswer, MockAttempt, Question, QuestionBank, objectIdOrNull, withId } from "@/db/models";
+import { Course, FlaggedQuestion, MockAnswer, MockAttempt, Question, QuestionBank, objectIdOrNull, withId } from "@/db/models";
 import { requireUser } from "@/lib/auth";
 import {
   inferMockQuestionType,
@@ -112,6 +112,10 @@ export async function POST(request: Request) {
       source: question,
       prepared: prepareMockQuestion(question, type),
     }));
+    const existingFlags = await FlaggedQuestion.find({
+      userId: user.id,
+      questionId: { $in: selected.map(({ source }) => source._id) },
+    }).select("questionId").lean();
     const session = await mongoose.startSession();
     let attemptId = "";
     try {
@@ -137,6 +141,6 @@ export async function POST(request: Request) {
       questionType: prepared.questionType,
       question: prepared.question,
       ...(prepared.options ? { options: prepared.options } : {}),
-    })) });
+    })), flaggedQuestionIds: existingFlags.map((flag) => String(flag.questionId)) });
   } catch { return Response.json({ error: "Could not start mock." }, { status: 500 }); }
 }
