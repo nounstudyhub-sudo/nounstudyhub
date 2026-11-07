@@ -320,13 +320,16 @@ export function AiPracticePanel({
         <div className={`practice-countdown ${secondsRemaining < 60 ? "urgent" : ""}`} aria-live="off"><span aria-hidden="true">◷</span> {formattedTime}</div>
       </div>
       <div className="ai-practice-workspace">
-        <aside className="ai-practice-palette ai-practice-palette-desktop">
+      <aside className="ai-practice-desktop-sidebar">
+        <section className="ai-practice-palette question-palette-card">
           <strong>Questions</strong>
           <small>{answeredCount} of {questions.length} answered</small>
           <div className="question-dots">
             {questions.map((item, index) => <button type="button" key={index} aria-label={`Go to question ${index + 1}${answers[index]?.trim() ? ", answered" : ""}`} aria-current={currentQuestion === index ? "step" : undefined} className={`${currentQuestion === index ? "current" : ""} ${answers[index]?.trim() ? "answered" : ""}`} onClick={() => setCurrentQuestion(index)}>{index + 1}</button>)}
           </div>
-        </aside>
+        </section>
+        <button className="button ai-practice-submit-button ai-practice-submit-bottom" type="button" onClick={submitPractice} disabled={submitting}>{submitting ? "Saving results…" : "Submit Practice"}</button>
+      </aside>
       <main className="question-stage ai-practice-stage">
         <div className="question-topline">
           <span>QUESTION {String(currentQuestion + 1).padStart(2, "0")} <b>/ {String(questions.length).padStart(2, "0")}</b></span>
@@ -373,16 +376,16 @@ export function AiPracticePanel({
         </div>
         <div className="question-footer ai-practice-footer">
           <button className="button button-light" type="button" disabled={currentQuestion === 0} onClick={() => setCurrentQuestion((value) => Math.max(0, value - 1))}>← Previous</button>
-          <button className="button ai-practice-submit-button" type="button" onClick={submitPractice} disabled={submitting}>{submitting ? "Saving results…" : "Submit Practice"}</button>
           <button className="button ai-practice-next-button" type="button" disabled={currentQuestion === questions.length - 1} onClick={() => setCurrentQuestion((value) => Math.min(questions.length - 1, value + 1))}>Next →</button>
         </div>
-        <div className="ai-practice-palette ai-practice-palette-mobile">
+        <section className="ai-practice-palette question-palette-card ai-practice-mobile-palette">
           <strong>Questions</strong>
           <small>{answeredCount} of {questions.length} answered</small>
           <div className="question-dots">
             {questions.map((item, index) => <button type="button" key={index} aria-label={`Go to question ${index + 1}${answers[index]?.trim() ? ", answered" : ""}`} aria-current={currentQuestion === index ? "step" : undefined} className={`${currentQuestion === index ? "current" : ""} ${answers[index]?.trim() ? "answered" : ""}`} onClick={() => setCurrentQuestion(index)}>{index + 1}</button>)}
           </div>
-        </div>
+        </section>
+        <button className="button ai-practice-submit-button ai-practice-submit-bottom ai-practice-mobile-submit" type="button" onClick={submitPractice} disabled={submitting}>{submitting ? "Saving results…" : "Submit Practice"}</button>
       </main>
       </div>
     </div>}

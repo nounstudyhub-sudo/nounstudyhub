@@ -408,30 +408,32 @@ function MockScreen({ course, questions, durationMinutes, userId, initialFlagged
         </div>
       </header>
       <div className="mock-body">
-        <aside className="question-nav">
-          <div className="question-nav-heading">
-            <strong>Questions</strong>
-            <small>{answered} of {questions.length} answered</small>
+        <aside className="question-nav mock-desktop-sidebar">
+          <div className="question-palette-card" aria-label="Question palette">
+            <div className="question-palette-heading">
+              <strong>Questions</strong>
+              <small>{answered} of {questions.length} answered</small>
+            </div>
+            <div className="question-dots">
+              {questions.map((item, index) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  aria-label={`Go to question ${index + 1}${answers[item.id]?.trim() ? ", answered" : ""}`}
+                  aria-current={current === index ? "step" : undefined}
+                  className={`${current === index ? "current" : ""} ${answers[item.id]?.trim() ? "answered" : ""}`}
+                  onClick={() => setCurrent(index)}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+            <div className="nav-legend">
+              <span><i className="answered" /> Answered</span>
+              <span><i /> Not answered</span>
+            </div>
           </div>
-          <div className="question-dots" aria-label="Question palette">
-            {questions.map((item, index) => (
-              <button
-                type="button"
-                key={item.id}
-                aria-label={`Go to question ${index + 1}${answers[item.id]?.trim() ? ", answered" : ""}`}
-                aria-current={current === index ? "step" : undefined}
-                className={`${current === index ? "current" : ""} ${answers[item.id]?.trim() ? "answered" : ""}`}
-                onClick={() => setCurrent(index)}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </div>
-          <div className="nav-legend">
-            <span><i className="answered" /> Answered</span>
-            <span><i /> Not answered</span>
-          </div>
-          <Button className="sidebar-submit" onClick={() => setConfirm(true)}>
+          <Button className="mock-submit-bottom" onClick={() => setConfirm(true)}>
             Submit Mock <Icon name="arrow" />
           </Button>
         </aside>
@@ -496,9 +498,6 @@ function MockScreen({ course, questions, durationMinutes, userId, initialFlagged
             <Button variant="light" disabled={current === 0} onClick={() => setCurrent(Math.max(0, current - 1))}>
               ← Previous
             </Button>
-            <Button className="mock-toolbar-submit" onClick={() => setConfirm(true)}>
-              Submit Mock <Icon name="arrow" />
-            </Button>
             <Button
               className="mock-next-button"
               disabled={current === questions.length - 1}
@@ -507,6 +506,33 @@ function MockScreen({ course, questions, durationMinutes, userId, initialFlagged
               Next →
             </Button>
           </div>
+          <section className="question-palette-card mock-mobile-palette" aria-label="Question palette">
+            <div className="question-palette-heading">
+              <strong>Questions</strong>
+              <small>{answered} of {questions.length} answered</small>
+            </div>
+            <div className="question-dots">
+              {questions.map((item, index) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  aria-label={`Go to question ${index + 1}${answers[item.id]?.trim() ? ", answered" : ""}`}
+                  aria-current={current === index ? "step" : undefined}
+                  className={`${current === index ? "current" : ""} ${answers[item.id]?.trim() ? "answered" : ""}`}
+                  onClick={() => setCurrent(index)}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+            <div className="nav-legend">
+              <span><i className="answered" /> Answered</span>
+              <span><i /> Not answered</span>
+            </div>
+          </section>
+          <Button className="mock-submit-bottom mock-mobile-submit" onClick={() => setConfirm(true)}>
+            Submit Mock <Icon name="arrow" />
+          </Button>
         </main>
       </div>
       {confirm && (
